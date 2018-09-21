@@ -5,6 +5,7 @@
 #include "rtc.h"
 #include "usart.h"
 #include "tpic6c595.h"
+#include "input.h"
 
 //u16 i = 0;
 //u8 eepbuf[256];
@@ -26,6 +27,7 @@ int main(void)
 	USART1_Init(256000);
 	USART2_Init(256000);
 	TPIC6C595_Init();
+	INPUT_Init();
 
 	__set_PRIMASK(0);	//开启全局中断
 
@@ -37,7 +39,6 @@ int main(void)
 //	{
 //		eepbuf[i] = AT24CXX_ReadOneByte(i);
 //	}
-
 
 	mem_init();
 
@@ -52,57 +53,6 @@ int main(void)
 
 	while(1)
 	{
-//		ControlAllRelay(0x0FFF);
-//		delay_ms(1000);
-//		ControlAllRelay(0x0000);
-//		delay_ms(1000);
-//		ControlAppointedRelay(1,1);
-//		delay_ms(1000);
-//		ControlAppointedRelay(2,1);
-//		delay_ms(1000);
-//		ControlAppointedRelay(3,1);
-//		delay_ms(1000);
-//		ControlAppointedRelay(4,1);
-//		delay_ms(1000);
-//		ControlAppointedRelay(5,1);
-//		delay_ms(1000);
-//		ControlAppointedRelay(6,1);
-//		delay_ms(1000);
-//		ControlAppointedRelay(7,1);
-//		delay_ms(1000);
-//		ControlAppointedRelay(8,1);
-//		delay_ms(1000);
-//		ControlAppointedRelay(9,1);
-//		delay_ms(1000);
-//		ControlAppointedRelay(10,1);
-//		delay_ms(1000);
-//		ControlAppointedRelay(11,1);
-//		delay_ms(1000);
-//		ControlAppointedRelay(12,1);
-//		delay_ms(1000);
-//		ControlAppointedRelay(1,0);
-//		delay_ms(1000);
-//		ControlAppointedRelay(2,0);
-//		delay_ms(1000);
-//		ControlAppointedRelay(3,0);
-//		delay_ms(1000);
-//		ControlAppointedRelay(4,0);
-//		delay_ms(1000);
-//		ControlAppointedRelay(5,0);
-//		delay_ms(1000);
-//		ControlAppointedRelay(6,0);
-//		delay_ms(1000);
-//		ControlAppointedRelay(7,0);
-//		delay_ms(1000);
-//		ControlAppointedRelay(8,0);
-//		delay_ms(1000);
-//		ControlAppointedRelay(9,0);
-//		delay_ms(1000);
-//		ControlAppointedRelay(10,0);
-//		delay_ms(1000);
-//		ControlAppointedRelay(11,0);
-//		delay_ms(1000);
-//		ControlAppointedRelay(12,0);
 		delay_ms(1000);
 	}
 }
