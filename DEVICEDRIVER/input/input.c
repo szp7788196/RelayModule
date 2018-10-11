@@ -24,8 +24,237 @@ void INPUT_Init(void)
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 }
 
+//读取开入状态
+u16 GetAllInputState(void)
+{
+	u16 state = 0;
+	
+	if(INPUT1)
+	{
+		state &= ~(1 << 0);
+	}
+	else
+	{
+		state |= (1 << 0);
+	}
+	
+	if(INPUT2)
+	{
+		state &= ~(1 << 1);
+	}
+	else
+	{
+		state |= (1 << 1);
+	}
+	
+	if(INPUT3)
+	{
+		state &= ~(1 << 2);
+	}
+	else
+	{
+		state |= (1 << 2);
+	}
+	
+	if(INPUT4)
+	{
+		state &= ~(1 << 3);
+	}
+	else
+	{
+		state |= (1 << 3);
+	}
+	
+	if(INPUT5)
+	{
+		state &= ~(1 << 4);
+	}
+	else
+	{
+		state |= (1 << 4);
+	}
+	
+	if(INPUT6)
+	{
+		state &= ~(1 << 5);
+	}
+	else
+	{
+		state |= (1 << 5);
+	}
+	
+	if(INPUT7)
+	{
+		state &= ~(1 << 6);
+	}
+	else
+	{
+		state |= (1 << 6);
+	}
+	
+	if(INPUT8)
+	{
+		state &= ~(1 << 7);
+	}
+	else
+	{
+		state |= (1 << 7);
+	}
+	
+	if(INPUT9)
+	{
+		state &= ~(1 << 8);
+	}
+	else
+	{
+		state |= (1 << 8);
+	}
+	
+	if(INPUT10)
+	{
+		state &= ~(1 << 9);
+	}
+	else
+	{
+		state |= (1 << 9);
+	}
+	
+	if(INPUT11)
+	{
+		state &= ~(1 << 10);
+	}
+	else
+	{
+		state |= (1 << 10);
+	}
+	
+	if(INPUT12)
+	{
+		state &= ~(1 << 11);
+	}
+	else
+	{
+		state |= (1 << 11);
+	}
+	
+	return state;
+}
 
-
+//读取开出状态
+u16 GetAllOutPutState(void)
+{
+	u16 state = 0;
+	
+	if(INPUT1)
+	{
+		state &= ~(1 << 0);
+	}
+	else
+	{
+		state |= (1 << 0);
+	}
+	
+	if(INPUT2)
+	{
+		state &= ~(1 << 1);
+	}
+	else
+	{
+		state |= (1 << 1);
+	}
+	
+	if(INPUT3)
+	{
+		state &= ~(1 << 2);
+	}
+	else
+	{
+		state |= (1 << 2);
+	}
+	
+	if(INPUT4)
+	{
+		state &= ~(1 << 3);
+	}
+	else
+	{
+		state |= (1 << 3);
+	}
+	
+	if(INPUT5)
+	{
+		state &= ~(1 << 4);
+	}
+	else
+	{
+		state |= (1 << 4);
+	}
+	
+	if(INPUT6)
+	{
+		state &= ~(1 << 5);
+	}
+	else
+	{
+		state |= (1 << 5);
+	}
+	
+	if(INPUT7)
+	{
+		state &= ~(1 << 6);
+	}
+	else
+	{
+		state |= (1 << 6);
+	}
+	
+	if(INPUT8)
+	{
+		state &= ~(1 << 7);
+	}
+	else
+	{
+		state |= (1 << 7);
+	}
+	
+	if(INPUT9)
+	{
+		state &= ~(1 << 8);
+	}
+	else
+	{
+		state |= (1 << 8);
+	}
+	
+	if(INPUT10)
+	{
+		state &= ~(1 << 9);
+	}
+	else
+	{
+		state |= (1 << 9);
+	}
+	
+	if(INPUT11)
+	{
+		state &= ~(1 << 10);
+	}
+	else
+	{
+		state |= (1 << 10);
+	}
+	
+	if(INPUT12)
+	{
+		state &= ~(1 << 11);
+	}
+	else
+	{
+		state |= (1 << 11);
+	}
+	
+	return state;
+}
 
 
 

@@ -50,7 +50,25 @@
 
 #define DEBUG_LOG								//是否打印调试信息
 
-#define HOLD_REG_LEN				256
+#define DEBUG_LOG								//是否打印调试信息
+
+#define MAX_FW_VER					9999
+#define MAX_FW_BAG_NUM				896
+#define MAX_FW_LAST_BAG_NUM			134
+
+
+#define MAX_GROUP_NUM				18		//(256 - 11 - 6 - 36) / 11
+#define HOLD_REG_LEN				512
+#define TIME_BUF_LEN				256
+
+#define MAX_UPLOAD_INVL				65500
+
+#define TYPE_WEEKDAY				0x01
+#define TYPE_WEEKEND				0x02
+#define TYPE_HOLIDAY				0x04
+
+#define MODE_AUTO					0
+#define MODE_MANUAL					1
 
 #define APP_SW_VER_ADD				4			//应用软件版本存储地址
 #define APP_SW_VER_LEN				4
@@ -67,6 +85,54 @@
 #define UU_ID_ADD					55			//UUID存储地址
 #define UU_ID_LEN					38
 
+#define UPLOAD_INVL_ADD				256			//数据上传周期存储地址
+#define UPLOAD_INVL_LEN				4
+
+#define OTA_INFO_ADD				301			//OTA信息存储地址
+#define OTA_INFO_LEN				9
+
+#define FIRM_WARE_FLAG_S_ADD		301			//新固件标识存储地址
+#define FIRM_WARE_STORE_ADD_S_ADD	302			//新固件Flash地址存储地址
+#define FIRM_WARE_VER_S_ADD			303			//新固件版本号存储地址
+#define FIRM_WARE_BAG_NUM_S_ADD		305			//新固件总包数存储地址
+#define LAST_BAG_BYTE_NUM_S_ADD		307			//新固件末包字节数存储地址
+
+#define TIME_GROUP_NUM_ADD			361			//策略组数存储地址
+#define TIME_GROUP_NUM_LEN			3
+
+#define RELAY_STATE_ADD				364			//继电器状态存储地址
+#define RELAY_STATE_LEN				4
+
+#define TIME_RULE_ADD				512			//时间策略存储地址
+#define TIME_RULE_LEN				12
+
+
+#define RegularTime_S struct RegularTime
+typedef struct RegularTime *pRegularTime;
+struct RegularTime
+{
+	u8 type;			//策略类别Bit0:1 工作日 Bit1:1 周末 Bit2:1节日
+
+	u8 s_year;
+	u8 s_month;
+	u8 s_date;
+	u8 s_hour;
+	u8 s_minute;
+	time_t s_seconds;
+
+	u8 e_year;
+	u8 e_month;
+	u8 e_date;
+	u8 e_hour;
+	u8 e_minute;
+	time_t e_seconds;
+	
+	u16 control_bit;	//位指定字节
+	u16 control_state;	//状态指定字节
+
+	RegularTime_S *prev;
+	RegularTime_S *next;
+};
 
 
 static const uint32_t crc32tab[] = 
@@ -201,6 +267,17 @@ extern SemaphoreHandle_t  xMutex_IIC1;			//IIC1的互斥量
 
 
 extern u8 HoldReg[HOLD_REG_LEN];
+extern u8 RegularTimeGroups[TIME_BUF_LEN];
+extern u8 TimeGroupNumber;
+extern RegularTime_S RegularTimeStruct[MAX_GROUP_NUM];
+
+/***************************固件升级相关*****************************/
+extern u8 NeedUpDateFirmWare;			//有新固件需要加载
+extern u8 HaveNewFirmWare;				//0xAA有新固件 others无新固件
+extern u8 NewFirmWareAdd;				//0xAA新固件地址0x0800C000 0x55新固件地址0x08026000
+extern u16 NewFirmWareBagNum;			//固件包的数量（一个固件包含多个小包）
+extern u16 NewFirmWareVer;				//固件包的版本
+extern u8 LastBagByteNum;				//最后一包的字节数
 
 /***************************系统心跳相关*****************************/
 extern u32 SysTick1ms;					//1ms滴答时钟
@@ -222,6 +299,9 @@ extern u8 *DeviceName;					//设备名称
 extern u8 *DeviceID;					//设备ID
 extern u8 *DeviceUUID;					//设备UUID
 
+/***************************运行参数相关*****************************/
+extern u16 UpLoadINCL;					//数据上传时间间隔0~65535秒
+extern u8 DeviceWorkMode;				//运行模式，0：自动，1：手动
 
 extern u8 NeedToReset;					//复位/重启标志
 
@@ -235,7 +315,9 @@ extern u8 NeedToReset;					//复位/重启标志
 /*| R1合 | R1分 | R2合 | R2分 | R3合 | R3分 | R4合 | R4分 | R5合 | R5分 | R6合 | R6分 | R7合 | R7分 | R8合 | R8分 | R9合 | R9分 | R10合| R10分| R11合| R11分| R12合| R21分|*/
 /*|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|*/
 extern u16 OutPutControlBit;			//开出位标志
-extern u16 OutPutControlBitCh;			//开出位标志(具体哪几位)
+extern u16 OutPutControlState;			//开出位标志(具体哪几位)
+extern u16 AllRelayPowerState;			//继电器输入端是否带电
+extern u16 AllRelayState;				//继电器的状态
 
 
 u16 MyStrstr(u8 *str1, u8 *str2, u16 str1_len, u16 str2_len);
@@ -270,6 +352,7 @@ u8 CopyStrToPointer(u8 **pointer, u8 *str, u8 len);
 u8 GetDeviceName(void);
 u8 GetDeviceID(void);
 u8 GetDeviceUUID(void);
+u8 ReadUpLoadINVL(void);
 
 
 u8 ReadSoftWareVersion(void);
@@ -277,10 +360,16 @@ u8 ReadHardWareVersion(void);
 u8 ReadDeviceName(void);
 u8 ReadDeviceID(void);
 u8 ReadDeviceUUID(void);
-
+u8 ReadTimeGroupNumber(void);
+u8 ReadAllRelayState(void);
+u8 WriteAllRelayState(void);
+void WriteOTAInfo(u8 *hold_reg,u8 reset);
+u8 ReadOTAInfo(u8 *hold_reg);
+u8 ReadRegularTimeGroups(void);
 void ReadParametersFromEEPROM(void);
 
-
+u16 PackDataOfRelayInfo(u8 *outbuf);
+u16 PackNetData(u8 dev_add,u8 fun_code,u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *outbuf);
 
 
 

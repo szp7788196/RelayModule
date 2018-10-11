@@ -643,9 +643,14 @@
           <GroupName>PROTOCOL</GroupName>
           <Files>
             <File>
-              <FileName>at_protoco.c</FileName>
+              <FileName>at_protocol.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\PROTOCOL\at_protoco.c</FilePath>
+              <FilePath>..\PROTOCOL\at_protocol.c</FilePath>
+            </File>
+            <File>
+              <FileName>net_protocol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\PROTOCOL\net_protocol.c</FilePath>
             </File>
           </Files>
         </Group>

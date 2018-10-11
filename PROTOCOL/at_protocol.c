@@ -345,7 +345,7 @@ u8 AT_CommandRELAY(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 		
 //		itoa(OutPutControlBit, bin, 2);
 		
-		sprintf((char *)respbuf, "relay: %x\r\n",OutPutControlBit);
+		sprintf((char *)respbuf, "relay: %x\r\n",OutPutControlState);
 		ret = 0;
 	}
 	else if(inbuf_len == AT_CommandBuf[cmd_id].len +3 + 2 + 2 + 2&& \
@@ -369,14 +369,14 @@ u8 AT_CommandRELAY(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 			{
 				if(state == 0)
 				{
-					OutPutControlBit &= ~(1 << ch - 1);
+					OutPutControlState &= ~(1 << ch - 1);
 				}
 				else if(state == 1)
 				{
-					OutPutControlBit |= (1 << ch - 1);
+					OutPutControlState |= (1 << ch - 1);
 				}
 				
-				OutPutControlBitCh |= (1 << ch - 1);
+				OutPutControlBit |= (1 << ch - 1);
 			
 				ret = 0;
 			}

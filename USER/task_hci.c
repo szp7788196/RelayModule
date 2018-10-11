@@ -26,6 +26,16 @@ void vTaskHCI(void *pvParameters)
 			memset(Usart1RxBuf,0,Usart1FrameLen);
 		}
 		
+		if(send_len1 != 0)
+		{
+			UsartSendString(USART1,Usart1TxBuf, send_len1);
+			
+			memset(Usart1TxBuf,0,send_len1);
+			
+			send_len1 = 0;
+		}
+		
+		
 		if(Usart2RecvEnd == 0xAA)
 		{
 			Usart2RecvEnd = 0;
@@ -35,14 +45,6 @@ void vTaskHCI(void *pvParameters)
 			memset(Usart2RxBuf,0,Usart2FrameLen);
 		}
 		
-		if(send_len1 != 0)
-		{
-			UsartSendString(USART1,Usart1TxBuf, send_len1);
-			
-			memset(Usart1TxBuf,0,send_len1);
-			
-			send_len1 = 0;
-		}
 		if(send_len2 != 0)
 		{
 			DIR_485_TX;

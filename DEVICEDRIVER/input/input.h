@@ -21,7 +21,8 @@
 
 
 void INPUT_Init(void);
-
+u16 GetAllInputState(void);
+u16 GetAllOutPutState(void);
 
 
 

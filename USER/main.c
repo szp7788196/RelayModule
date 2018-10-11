@@ -7,8 +7,8 @@
 #include "tpic6c595.h"
 #include "input.h"
 
-//u16 i = 0;
-//u8 eepbuf[256];
+u16 i = 0;
+u8 eepbuf[256];
 //u16 cnt = 0;
 //u8 led_s = 0;
 RCC_ClocksTypeDef RCC_Clocks;
@@ -24,21 +24,22 @@ int main(void)
 	AT24CXX_Init();
 	LED_Init();
 	TIM2_Init(99,7199);
-	USART1_Init(256000);
-	USART2_Init(256000);
+	USART1_Init(115200);
+	USART2_Init(115200);
 	TPIC6C595_Init();
 	INPUT_Init();
 
 	__set_PRIMASK(0);	//开启全局中断
 
-//	for(i = 0; i < 256; i ++)
-//	{
-//		AT24CXX_WriteOneByte(i,i);
-//	}
-//	for(i = 0; i < 256; i ++)
-//	{
-//		eepbuf[i] = AT24CXX_ReadOneByte(i);
-//	}
+	for(i = 0; i < 256; i ++)
+	{
+		AT24CXX_WriteOneByte(i,i);
+	}
+	
+	for(i = 0; i < 256; i ++)
+	{
+		eepbuf[i] = AT24CXX_ReadOneByte(i);
+	}
 
 	mem_init();
 

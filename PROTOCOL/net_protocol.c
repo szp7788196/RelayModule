@@ -4,103 +4,80 @@
 #include "24cxx.h"
 #include "common.h"
 
-//读取/处理网络数据
-u16 NetDataFrameHandle(pTcp *tcp,u8 *outbuf,u8 *hold_reg,CONNECT_STATE_E connect_state)
-{
-	u16 ret = 0;
-	u16 len = 0;
-	u8 buf[1500];
-
-	memset(buf,0,1500);
-
-	len = (*tcp)->read(tcp,buf);
-	if(len != 0)
-	{
-		if(connect_state == ON_SERVER)
-		{
-			ret = NetDataAnalysis(buf,len,outbuf,hold_reg);
-		}
-		memset(buf,0,len);
-	}
-	return ret;
-}
-
 //网络数据帧协议解析
 u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 {
 	u16 ret = 0;
-	u16 pos = 0;
+	u16 pos1 = 0;
+	u16 pos2 = 0;
 	u16 data_len = 0;
 
+	u8 dev_add = 0;
 	u8 cmd_code = 0;
+	u8 cmd_id = 0;
 	u8 read_check_sum = 0;
 	u8 cal_check_sum = 0;
 
 	u8 buf_tail[6] = {0xFE,0xFD,0xFC,0xFB,0xFA,0xF9};
 
-	pos = MyStrstr(buf,buf_tail,len,6);
+	pos1 = MyStrstr(buf,buf_tail,len,6);
+	
+	if(DeviceUUID != NULL)
+	{
+		pos2 = MyStrstr(buf,DeviceUUID,len,36);
+	}
 
-	if(pos != 0xFFFF)
+	if(pos1 != 0xFFFF && pos2 != 0xFFFF)
 	{
 		if(*(buf + 0) == 0x68 && \
 			*(buf + 7) == 0x68 && \
-			*(buf + pos - 1) == 0x16)							//判断包头和包尾
+			*(buf + pos1 - 1) == 0x16)							//判断包头和包尾
 		{
-			cmd_code = *(buf + 8);								//获取功能码
-			data_len = *(buf + 9);								//获取有效数据的长度
-			read_check_sum = *(buf + pos - 2);					//获取校验和
-			cal_check_sum = CalCheckSum(buf, pos - 2);			//计算校验和
+			dev_add = *(buf + 8);								//获取从机地址
+			cmd_code = *(buf + 9);								//获取功能码
+			cmd_id = *(buf + 10);								//命令ID
+			data_len = *(buf + 11) - 36;						//获取有效数据的长度(数据域总长度 - UUID长度)
+			read_check_sum = *(buf + pos1 - 2);					//获取校验和
+			cal_check_sum = CalCheckSum(buf, pos1 - 2);			//计算校验和
 
 			if(read_check_sum == cal_check_sum)
 			{
 				switch(cmd_code)
 				{
-					case 0xE0:									//发送固定信息，上行，在别处处理
-
+					case 0xE0:									//发送固定信息(心跳)，上行
+						ret = UpdateRelayModeInfo(dev_add,cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
-					case 0xE1:									//发送心跳，上行，在别处处理
-
+					case 0xE1:									//控制继电器开闭状态
+						ret = ControlRelayState(dev_add,cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
 					case 0xE2:									//开关灯/调光，下行
-						ret = ControlLightLevel(cmd_code,buf + 10,data_len,outbuf);
+						ret = ControlDeviceReset(dev_add,cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
-					case 0xE3:									//远程升级OTA，下行
-
+					case 0xE3:									//设置定时发送间隔,下行
+						ret = SetDeviceUpLoadINCL(dev_add,cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
-					case 0xE4:									//重启/复位，下行
-						ret = ControlDeviceReset(cmd_code,buf + 10,data_len,outbuf);
+					case 0xE4:									//读取/发送信息
+						
 					break;
 
-					case 0xE5:									//设置定时发送间隔,下行
-						ret = SetDeviceUpLoadINCL(cmd_code,buf + 10,data_len,outbuf);
+					case 0xE5:									//从服务器获取时间
+						ret = GetTimeDateFromServer(dev_add,cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
-					case 0xE6:									//控制柜断电/通电，下行
-
+					case 0xE6:									//设置继电器定时策略，下行
+						ret = SetRegularTimeGroups(dev_add,cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
-					case 0xE7:									//设置亮灭灯定时策略，下行
-						ret = SetRegularTimeGroups(cmd_code,buf + 10,data_len,outbuf);
-					break;
-
-					case 0xE8:									//读取/发送设备配置信息，下行
-
-					break;
-
-					case 0xE9:									//设置设备的工作模式，手动或者自动模式
-						ret = SetDeviceWorkMode(cmd_code,buf + 10,data_len,outbuf);
-					break;
-
-					case 0xF0:									//设置设备UUID，固定64个字节
-						ret = SetDeviceUUID(cmd_code,buf + 10,data_len,outbuf);
+					case 0xE7:									//设置设备工作模式
+						ret = SetDeviceWorkMode(dev_add,cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
 					case 0x80:									//应答，下行,上行在别处处理
-						UnPackAckPacket(cmd_code,buf + 10,data_len);
+						UnPackAckPacket(dev_add,cmd_code,cmd_id,buf + 11 + 36,data_len);
 					break;
 
 					default:									//此处要给云端应答一个功能码错误信息
@@ -123,18 +100,15 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 }
 
 //解析ACK包
-u8 UnPackAckPacket(u8 cmd_code,u8 *buf,u8 len)
+u8 UnPackAckPacket(u8 dev_add,u8 cmd_code,u8 cmd_id,u8 *buf,u8 len)
 {
 	u8 ret = 0;
 
 	if(len == 2)
 	{
-		if(*(buf + 0) == cmd_code)
+		if(*(buf + 1) == 0)
 		{
-			if(*(buf + 1) == 0)
-			{
-				ret = 1;
-			}
+			ret = 1;
 		}
 	}
 
@@ -142,33 +116,46 @@ u8 UnPackAckPacket(u8 cmd_code,u8 *buf,u8 len)
 }
 
 //ACK打包
-u16 PackAckPacket(u8 cmd_code,u8 *data,u8 *outbuf)
+u16 PackAckPacket(u8 dev_add,u8 cmd_code,u8 cmd_id,u8 *data,u8 *outbuf)
 {
 	u16 len = 0;
 
-	len = PackNetData(0x80,data,2,outbuf);
+	len = PackNetData(dev_add,0x80,cmd_id,data,2,outbuf);
 
 	return len;
 }
 
-//控制灯的亮度
-u16 ControlLightLevel(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
+u16 UpdateRelayModeInfo(u8 dev_add,u8 cmd_code,u8 cmd_id,u8 *buf,u8 len,u8 *outbuf)
 {
 	u8 out_len = 0;
-	u8 level = 0;
+	
+	u8 data_buf[8] = {0,0,0,0,0,0,0,0};
+
+	out_len = PackDataOfRelayInfo(data_buf);
+	out_len = PackNetData(dev_add,cmd_code,cmd_id,data_buf,out_len,outbuf);
+
+	return out_len;
+}
+
+//控制继电器开闭
+u16 ControlRelayState(u8 dev_add,u8 cmd_code,u8 cmd_id,u8 *buf,u8 len,u8 *outbuf)
+{
+	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
+	u16 bit = 0;
+	u16 state = 0;
+
 	data_buf[0] = cmd_code;
 
-	if(len == 1)
+	if(len == 4)												//数据长度必须是64
 	{
-		level = *(buf + 0);
-
-		if(level <= 100)
+		bit = ((u16)(*(buf + 0)) << 16) + (*(buf + 1));
+		state = ((u16)(*(buf + 2)) << 16) + (*(buf + 3));
+		
+		if(bit < 0x0FFF && state < 0x0FFF)
 		{
-			LightLevelPercent = 2 * level;
-
-			DeviceWorkMode = MODE_MANUAL;		//强制转换为手动模式
-
+			OutPutControlBit = bit;
+			OutPutControlState = state;
 		}
 		else
 		{
@@ -180,13 +167,63 @@ u16 ControlLightLevel(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
 		data_buf[1] = 2;
 	}
 
-	out_len = PackAckPacket(cmd_code,data_buf,outbuf);
+	out_len = PackAckPacket(dev_add,cmd_code,cmd_id,data_buf,outbuf);
+
+	return out_len;
+}
+
+//下发更新固件命令
+u16 SetUpdateFirmWareInfo(u8 dev_add,u8 cmd_code,u8 cmd_id,u8 *buf,u8 len,u8 *outbuf)
+{
+	u8 out_len = 0;
+	u8 data_buf[2] = {0,0};
+	data_buf[0] = cmd_code;
+
+	if(len == 1)
+	{
+		NewFirmWareVer    = (((u16)(*(buf + 0))) << 8) + (u16)(*(buf + 1));
+		NewFirmWareBagNum = (((u16)(*(buf + 2))) << 8) + (u16)(*(buf + 3));
+		LastBagByteNum    = *(buf + 4);
+	
+		if(NewFirmWareBagNum == 0 || NewFirmWareBagNum > MAX_FW_BAG_NUM \
+			|| NewFirmWareVer == 0 || NewFirmWareVer > MAX_FW_VER \
+			|| LastBagByteNum == 0 || LastBagByteNum > MAX_FW_LAST_BAG_NUM)  //128 + 2 + 4 = 134
+		{
+			data_buf[1] = 1;
+		}
+		else
+		{
+			HaveNewFirmWare = 0xAA;
+			if(NewFirmWareAdd == 0xAA)
+			{
+				NewFirmWareAdd = 0x55;
+			}
+			else if(NewFirmWareAdd == 0x55)
+			{
+				NewFirmWareAdd = 0xAA;
+			}
+			else
+			{
+				NewFirmWareAdd = 0xAA;
+			}
+			
+			WriteOTAInfo(HoldReg,0);		//将数据写入EEPROM
+			
+			NeedToReset = 1;				//重新启动
+		}
+	}
+	else
+	{
+		data_buf[1] = 2;
+	}
+
+	out_len = PackAckPacket(dev_add,cmd_code,cmd_id,data_buf,outbuf);
 
 	return out_len;
 }
 
 //远程重启
-u16 ControlDeviceReset(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
+u16 ControlDeviceReset(u8 dev_add,u8 cmd_code,u8 cmd_id,u8 *buf,u8 len,u8 *outbuf)
 {
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
@@ -201,13 +238,13 @@ u16 ControlDeviceReset(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
 		data_buf[1] = 2;
 	}
 
-	out_len = PackAckPacket(cmd_code,data_buf,outbuf);
+	out_len = PackAckPacket(dev_add,cmd_code,cmd_id,data_buf,outbuf);
 
 	return out_len;
 }
 
 //设置设备数据上传时间间隔
-u16 SetDeviceUpLoadINCL(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
+u16 SetDeviceUpLoadINCL(u8 dev_add,u8 cmd_code,u8 cmd_id,u8 *buf,u8 len,u8 *outbuf)
 {
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
@@ -236,13 +273,55 @@ u16 SetDeviceUpLoadINCL(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
 		data_buf[1] = 2;
 	}
 
-	out_len = PackAckPacket(cmd_code,data_buf,outbuf);
+	out_len = PackAckPacket(dev_add,cmd_code,cmd_id,data_buf,outbuf);
+
+	return out_len;
+}
+
+//从服务器获取时间戳
+u16 GetTimeDateFromServer(u8 dev_add,u8 cmd_code,u8 cmd_id,u8 *buf,u8 len,u8 *outbuf)
+{
+	u8 out_len = 0;
+	u8 data_buf[2] = {0,0};
+	u8 year = 0;
+	u8 mon = 0;
+	u8 day = 0;
+	u8 hour = 0;
+	u8 min = 0;
+	u8 sec = 0;
+
+	data_buf[0] = cmd_code;
+
+	if(len == 12)												//数据长度必须是64
+	{
+		year = *(buf + 0);
+		mon  = *(buf + 1);
+		day  = *(buf + 2);
+		hour = *(buf + 3);
+		min  = *(buf + 4);
+		sec  = *(buf + 5);
+		
+		if(year >= 18 && mon <= 12 && day <= 31 && hour <= 23 && min <= 59 && sec <= 59)
+		{
+			RTC_Set(year + 2000,mon,day,hour,min,sec);
+		}
+		else
+		{
+			data_buf[1] = 1;
+		}
+	}
+	else
+	{
+		data_buf[1] = 2;
+	}
+
+	out_len = PackAckPacket(dev_add,cmd_code,cmd_id,data_buf,outbuf);
 
 	return out_len;
 }
 
 //设置策略时间
-u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
+u16 SetRegularTimeGroups(u8 dev_add,u8 cmd_code,u8 cmd_id,u8 *buf,u8 len,u8 *outbuf)
 {
 	u8 out_len = 0;
 	u8 group_num = 0;
@@ -294,7 +373,7 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
 				RegularTimeStruct[i / 2].s_hour 	= time_group[(i + 0) * 9 + 4];
 				RegularTimeStruct[i / 2].s_minute 	= time_group[(i + 0) * 9 + 5];
 
-				RegularTimeStruct[i / 2].percent 	= time_group[(i + 0) * 9 + 6];
+//				RegularTimeStruct[i / 2].percent 	= time_group[(i + 0) * 9 + 6];
 
 				RegularTimeStruct[i / 2].e_year 	= time_group[(i + 1) * 9 + 1];
 				RegularTimeStruct[i / 2].e_month 	= time_group[(i + 1) * 9 + 2];
@@ -317,13 +396,13 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
 		data_buf[1] = 2;
 	}
 
-	out_len = PackAckPacket(cmd_code,data_buf,outbuf);
+	out_len = PackAckPacket(dev_add,cmd_code,cmd_id,data_buf,outbuf);
 
 	return out_len;
 }
 
-//控制灯的亮度
-u16 SetDeviceWorkMode(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
+//控制设备的工作模式
+u16 SetDeviceWorkMode(u8 dev_add,u8 cmd_code,u8 cmd_id,u8 *buf,u8 len,u8 *outbuf)
 {
 	u8 out_len = 0;
 	u8 mode = 0;
@@ -337,7 +416,6 @@ u16 SetDeviceWorkMode(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
 		if(mode == 0 || mode == 1)
 		{
 			DeviceWorkMode = mode;			//置工作模式标志
-
 		}
 		else
 		{
@@ -349,25 +427,25 @@ u16 SetDeviceWorkMode(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
 		data_buf[1] = 2;
 	}
 
-	out_len = PackAckPacket(cmd_code,data_buf,outbuf);
+	out_len = PackAckPacket(dev_add,cmd_code,cmd_id,data_buf,outbuf);
 
 	return out_len;
 }
 
 //设置设备的UUID
-u16 SetDeviceUUID(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
+u16 SetDeviceUUID(u8 dev_add,u8 cmd_code,u8 cmd_id,u8 *buf,u8 len,u8 *outbuf)
 {
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
-	u8 uuid_buf[66];
+	u8 uuid_buf[38];
 
 	data_buf[0] = cmd_code;
 
-	if(len == 64)												//数据长度必须是64
+	if(len == 36)												//数据长度必须是64
 	{
-		memset(uuid_buf,0,66);
+		memset(uuid_buf,0,38);
 
-		memcpy(&HoldReg[UU_ID_ADD],buf,64);
+		memcpy(&HoldReg[UU_ID_ADD],buf,36);
 		
 		GetDeviceUUID();
 
@@ -378,7 +456,7 @@ u16 SetDeviceUUID(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf)
 		data_buf[1] = 2;
 	}
 
-	out_len = PackAckPacket(cmd_code,data_buf,outbuf);
+	out_len = PackAckPacket(dev_add,cmd_code,cmd_id,data_buf,outbuf);
 
 	return out_len;
 }
