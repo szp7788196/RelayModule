@@ -126,7 +126,7 @@ struct RegularTime
 	u8 e_hour;
 	u8 e_minute;
 	time_t e_seconds;
-	
+
 	u16 control_bit;	//位指定字节
 	u16 control_state;	//状态指定字节
 
@@ -134,8 +134,7 @@ struct RegularTime
 	RegularTime_S *next;
 };
 
-
-static const uint32_t crc32tab[] = 
+static const uint32_t crc32tab[] =
 {
 	0x00000000L, 0x77073096L, 0xee0e612cL, 0x990951baL,
 	0x076dc419L, 0x706af48fL, 0xe963a535L, 0x9e6495a3L,
@@ -200,10 +199,10 @@ static const uint32_t crc32tab[] =
 	0xbdbdf21cL, 0xcabac28aL, 0x53b39330L, 0x24b4a3a6L,
 	0xbad03605L, 0xcdd70693L, 0x54de5729L, 0x23d967bfL,
 	0xb3667a2eL, 0xc4614ab8L, 0x5d681b02L, 0x2a6f2b94L,
-	0xb40bbe37L, 0xc30c8ea1L, 0x5a05df1bL, 0x2d02ef8dL 
+	0xb40bbe37L, 0xc30c8ea1L, 0x5a05df1bL, 0x2d02ef8dL
 };
 
-static u8 auchCRCHi[] = 
+static u8 auchCRCHi[] =
 {
     0x00,0xC1,0x81,0x40,0x01,0xC0,0x80,0x41,0x01,0xC0,
     0x80,0x41,0x00,0xC1,0x81,0x40,0x01,0xC0,0x80,0x41,
@@ -233,7 +232,7 @@ static u8 auchCRCHi[] =
     0x80,0x41,0x00,0xC1,0x81,0x40
     } ;
     /* CRC低位字节值表*/
-static u8 auchCRCLo[] = 
+static u8 auchCRCLo[] =
 {
     0x00,0xC0,0xC1,0x01,0xC3,0x03,0x02,0xC2,0xC6,0x06,
     0x07,0xC7,0x05,0xC5,0xC4,0x04,0xCC,0x0C,0x0D,0xCD,
@@ -301,6 +300,7 @@ extern u8 *DeviceUUID;					//设备UUID
 
 /***************************运行参数相关*****************************/
 extern u16 UpLoadINCL;					//数据上传时间间隔0~65535秒
+extern u8 GetTimeOK;					//成功获取时间标志
 extern u8 DeviceWorkMode;				//运行模式，0：自动，1：手动
 
 extern u8 NeedToReset;					//复位/重启标志
@@ -369,7 +369,7 @@ u8 ReadRegularTimeGroups(void);
 void ReadParametersFromEEPROM(void);
 
 u16 PackDataOfRelayInfo(u8 *outbuf);
-u16 PackNetData(u8 dev_add,u8 fun_code,u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *outbuf);
+u16 PackNetData(u8 fun_code,u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *outbuf);
 
 
 

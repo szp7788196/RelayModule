@@ -36,6 +36,7 @@ u8 *DeviceUUID = NULL;				//设备UUID
 
 /***************************运行参数相关*****************************/
 u16 UpLoadINCL = 10;				//数据上传时间间隔0~65535秒
+u8 GetTimeOK = 0;					//成功获取时间标志
 u8 DeviceWorkMode = 0;				//运行模式，0：自动，1：手动
 
 /***************************其他*****************************/
@@ -808,12 +809,12 @@ u8 ReadRegularTimeGroups(void)
 
 		for(i = 0; i < TimeGroupNumber; i ++)
 		{
-			for(j = i * 9; j < i * 9 + 9; j ++)
+			for(j = i * 12; j < i * 12 + 12; j ++)
 			{
 				time_group[j] = AT24CXX_ReadOneByte(TIME_RULE_ADD + j);
 			}
 
-			cal_crc = CRC16(&time_group[j - 9],7);
+			cal_crc = CRC16(&time_group[j - 12],10);
 			read_crc = (((u16)time_group[j - 2]) << 8) + (u16)time_group[j - 1];
 
 			if(cal_crc == read_crc)
@@ -826,24 +827,25 @@ u8 ReadRegularTimeGroups(void)
 		{
 			if(read_success_buf_flag[i + 0] == 1 && read_success_buf_flag[i + 1] == 1)
 			{
-				RegularTimeStruct[i / 2].type 		= time_group[(i + 0) * 9 + 0];
+				RegularTimeStruct[i / 2].type 			= time_group[(i + 0) * 12 + 0];
 
-				RegularTimeStruct[i / 2].s_year 	= time_group[(i + 0) * 9 + 1];
-				RegularTimeStruct[i / 2].s_month 	= time_group[(i + 0) * 9 + 2];
-				RegularTimeStruct[i / 2].s_date 	= time_group[(i + 0) * 9 + 3];
-				RegularTimeStruct[i / 2].s_hour 	= time_group[(i + 0) * 9 + 4];
-				RegularTimeStruct[i / 2].s_minute 	= time_group[(i + 0) * 9 + 5];
+				RegularTimeStruct[i / 2].s_year 		= time_group[(i + 0) * 12 + 1];
+				RegularTimeStruct[i / 2].s_month 		= time_group[(i + 0) * 12 + 2];
+				RegularTimeStruct[i / 2].s_date 		= time_group[(i + 0) * 12 + 3];
+				RegularTimeStruct[i / 2].s_hour 		= time_group[(i + 0) * 12 + 4];
+				RegularTimeStruct[i / 2].s_minute 		= time_group[(i + 0) * 12 + 5];
 
-//				RegularTimeStruct[i / 2].percent 	= time_group[(i + 0) * 9 + 6];
+				RegularTimeStruct[i / 2].control_bit	= (((u16)time_group[(i + 0) * 12 + 6]) << 8) + (u16)time_group[(i + 0) * 12 + 7];
+				RegularTimeStruct[i / 2].control_state	= (((u16)time_group[(i + 0) * 12 + 8]) << 8) + (u16)time_group[(i + 0) * 12 + 9];
 
-				RegularTimeStruct[i / 2].e_year 	= time_group[(i + 1) * 9 + 1];
-				RegularTimeStruct[i / 2].e_month 	= time_group[(i + 1) * 9 + 2];
-				RegularTimeStruct[i / 2].e_date 	= time_group[(i + 1) * 9 + 3];
-				RegularTimeStruct[i / 2].e_hour 	= time_group[(i + 1) * 9 + 4];
-				RegularTimeStruct[i / 2].e_minute 	= time_group[(i + 1) * 9 + 5];
+				RegularTimeStruct[i / 2].e_year 		= time_group[(i + 1) * 12 + 1];
+				RegularTimeStruct[i / 2].e_month 		= time_group[(i + 1) * 12 + 2];
+				RegularTimeStruct[i / 2].e_date 		= time_group[(i + 1) * 12 + 3];
+				RegularTimeStruct[i / 2].e_hour 		= time_group[(i + 1) * 12 + 4];
+				RegularTimeStruct[i / 2].e_minute 		= time_group[(i + 1) * 12 + 5];
 
-				RegularTimeStruct[i / 2].s_seconds = RegularTimeStruct[i / 2].s_hour * 3600 + RegularTimeStruct[i / 2].s_minute * 60;
-				RegularTimeStruct[i / 2].e_seconds = RegularTimeStruct[i / 2].e_hour * 3600 + RegularTimeStruct[i / 2].e_minute * 60;
+				RegularTimeStruct[i / 2].s_seconds 		= RegularTimeStruct[i / 2].s_hour * 3600 + RegularTimeStruct[i / 2].s_minute * 60;
+				RegularTimeStruct[i / 2].e_seconds 		= RegularTimeStruct[i / 2].e_hour * 3600 + RegularTimeStruct[i / 2].e_minute * 60;
 			}
 		}
 
@@ -871,6 +873,7 @@ void ReadParametersFromEEPROM(void)
 	ReadDeviceUUID();
 	ReadUpLoadINVL();
 	ReadAllRelayState();
+	ReadRegularTimeGroups();
 }
 
 //将继电器状态和时间打包
@@ -893,7 +896,7 @@ u16 PackDataOfRelayInfo(u8 *outbuf)
 }
 
 //将数据打包成网络格式的数据
-u16 PackNetData(u8 dev_add,u8 fun_code,u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *outbuf)
+u16 PackNetData(u8 fun_code,u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *outbuf)
 {
 	u16 len = 0;
 
@@ -904,34 +907,33 @@ u16 PackNetData(u8 dev_add,u8 fun_code,u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *out
 		memcpy(outbuf + 1,DeviceID,DEVICE_ID_LEN - 2);			//设备ID
 
 		*(outbuf + 7) = 0x68;
-		*(outbuf + 8) = dev_add;
-		*(outbuf + 9) = fun_code;
-		*(outbuf + 10) = cmd_id;
-		*(outbuf + 11) = inbuf_len;
+		*(outbuf + 8) = fun_code;
+		*(outbuf + 9) = cmd_id;
+		*(outbuf + 10) = inbuf_len;
 
-//		if(DeviceUUID != NULL)
-//		{
-//			memcpy(outbuf + 12,DeviceUUID,UU_ID_LEN - 2);		//UUID
-//		}
-//		else
-//		{
-//			memcpy(outbuf + 12,"000000000000000000000000000000000000",UU_ID_LEN - 2);	//默认UUID
-//		}
+		if(DeviceUUID != NULL)
+		{
+			memcpy(outbuf + 11,DeviceUUID,UU_ID_LEN - 2);		//UUID
+		}
+		else
+		{
+			memcpy(outbuf + 11,"000000000000000000000000000000000000",UU_ID_LEN - 2);	//默认UUID
+		}
 
-		memcpy(outbuf + 12,inbuf,inbuf_len);	//具体数据内容
+		memcpy(outbuf + 11,inbuf,inbuf_len);	//具体数据内容
 
-		*(outbuf + 12 + inbuf_len) = CalCheckSum(outbuf, 12 + inbuf_len);
+		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len) = CalCheckSum(outbuf, 11 + inbuf_len + UU_ID_LEN - 2);
 
-		*(outbuf + 12 + inbuf_len + 1) = 0x16;
+		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 1) = 0x16;
 
-		*(outbuf + 12 + inbuf_len + 2) = 0xFE;
-		*(outbuf + 12 + inbuf_len + 3) = 0xFD;
-		*(outbuf + 12 + inbuf_len + 4) = 0xFC;
-		*(outbuf + 12 + inbuf_len + 5) = 0xFB;
-		*(outbuf + 12 + inbuf_len + 6) = 0xFA;
-		*(outbuf + 12 + inbuf_len + 7) = 0xF9;
+		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 2) = 0xFE;
+		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 3) = 0xFD;
+		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 4) = 0xFC;
+		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 5) = 0xFB;
+		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 6) = 0xFA;
+		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 7) = 0xF9;
 
-		len = 12 + inbuf_len + 7 + 1;
+		len = 11 + UU_ID_LEN - 2 + inbuf_len + 7 + 1;
 	}
 	else
 	{
