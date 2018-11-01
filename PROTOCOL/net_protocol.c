@@ -9,7 +9,7 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 {
 	u16 ret = 0;
 	u16 pos1 = 0;
-	u16 pos2 = 0;
+	u16 pos2 = 0xFFFF;
 	u16 data_len = 0;
 
 	u8 cmd_code = 0;
@@ -35,7 +35,7 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 			*(buf + pos1 - 1) == 0x16)							//判断包头和包尾
 		{
 			cmd_id = *(buf + 9);								//命令ID
-			data_len = *(buf + 10) - UU_ID_LEN - 2;				//获取有效数据的长度(数据域总长度 - UUID长度)
+			data_len = DeviceUUID != NULL ? (*(buf + 10) - UU_ID_LEN - 2) : (*(buf + 10));	//获取有效数据的长度
 			read_check_sum = *(buf + pos1 - 2);					//获取校验和
 			cal_check_sum = CalCheckSum(buf, pos1 - 2);			//计算校验和
 

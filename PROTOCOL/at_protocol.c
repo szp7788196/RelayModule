@@ -229,7 +229,9 @@ u8 AT_CommandDEVNAME(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 			{
 				CopyStrToPointer(&DeviceName, &content[1],content[0]);
 				
-				WriteDataFromHoldBufToEeprom(content,DEVICE_NAME_ADD, DEVICE_NAME_LEN - 2);
+				memcpy(&HoldReg[DEVICE_NAME_ADD],content,DEVICE_NAME_LEN - 2);
+				
+				WriteDataFromHoldBufToEeprom(&HoldReg[DEVICE_NAME_ADD],DEVICE_NAME_ADD, DEVICE_NAME_LEN - 2);
 				
 				ret = 0;
 			}
@@ -273,14 +275,16 @@ u8 AT_CommandDEVID(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 			
 			for(i = 0; i < 6; i ++)
 			{
-				content_hex[i] = (content_str[i + 0] - 0x30) * 16 + (content_str[i + 1] - 0x30);
+				content_hex[i] = (content_str[i * 2 + 0] - 0x30) * 16 + (content_str[i * 2 + 1] - 0x30);
 			}
 			
 			if(content_str_len == 12)
 			{
 				CopyStrToPointer(&DeviceID, content_hex,content_str_len / 2);
 				
-				WriteDataFromHoldBufToEeprom(content_hex,DEVICE_ID_ADD, DEVICE_ID_LEN - 2);
+				memcpy(&HoldReg[DEVICE_ID_ADD],content_hex,DEVICE_ID_ADD - 2);
+				
+				WriteDataFromHoldBufToEeprom(&HoldReg[DEVICE_ID_ADD],DEVICE_ID_ADD, DEVICE_ID_LEN - 2);
 				
 				ret = 0;
 			}
@@ -321,7 +325,9 @@ u8 AT_CommandUUID(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 			{
 				CopyStrToPointer(&DeviceUUID, content,content_len);
 				
-				WriteDataFromHoldBufToEeprom(content,UU_ID_ADD, UU_ID_LEN - 2);
+				memcpy(&HoldReg[UU_ID_ADD],content,UU_ID_ADD - 2);
+				
+				WriteDataFromHoldBufToEeprom(&HoldReg[UU_ID_ADD],UU_ID_ADD, UU_ID_LEN - 2);
 				
 				ret = 0;
 			}

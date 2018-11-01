@@ -620,6 +620,7 @@ u8 ReadDeviceID(void)
 		}
 
 		memset(DeviceID,0,6);
+		DeviceID[5] = 0x02;
 	}
 
 	return ret;

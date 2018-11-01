@@ -35,7 +35,7 @@ int main(void)
 	{
 		AT24CXX_WriteOneByte(i,i);
 	}
-	
+
 	for(i = 0; i < 256; i ++)
 	{
 		eepbuf[i] = AT24CXX_ReadOneByte(i);
