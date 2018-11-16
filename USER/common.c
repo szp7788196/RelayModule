@@ -637,17 +637,17 @@ u8 ReadDeviceUUID(void)
 	{
 		GetDeviceUUID();
 	}
-//	else
-//	{
-//		if(DeviceUUID == NULL)
-//		{
-//			DeviceUUID = (u8 *)mymalloc(sizeof(u8) * 65);
-//		}
+	else
+	{
+		if(DeviceUUID == NULL)
+		{
+			DeviceUUID = (u8 *)mymalloc(sizeof(u8) * 65);
+		}
 
-//		memset(DeviceUUID,0,65);
+		memset(DeviceUUID,0,65);
 
-//		sprintf((char *)DeviceUUID, "000000000000000000000000000000000000");
-//	}
+		sprintf((char *)DeviceUUID, "000000000000000000000000000000000000");
+	}
 
 	return ret;
 }
@@ -910,7 +910,7 @@ u16 PackNetData(u8 fun_code,u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *outbuf)
 		*(outbuf + 7) = 0x68;
 		*(outbuf + 8) = fun_code;
 		*(outbuf + 9) = cmd_id;
-		*(outbuf + 10) = inbuf_len;
+		*(outbuf + 10) = inbuf_len + UU_ID_LEN - 2;
 
 		if(DeviceUUID != NULL)
 		{
@@ -921,7 +921,7 @@ u16 PackNetData(u8 fun_code,u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *outbuf)
 			memcpy(outbuf + 11,"000000000000000000000000000000000000",UU_ID_LEN - 2);	//默认UUID
 		}
 
-		memcpy(outbuf + 11,inbuf,inbuf_len);	//具体数据内容
+		memcpy(outbuf + 11 + UU_ID_LEN - 2,inbuf,inbuf_len);	//具体数据内容
 
 		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len) = CalCheckSum(outbuf, 11 + inbuf_len + UU_ID_LEN - 2);
 

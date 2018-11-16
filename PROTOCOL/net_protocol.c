@@ -35,7 +35,7 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 			*(buf + pos1 - 1) == 0x16)							//判断包头和包尾
 		{
 			cmd_id = *(buf + 9);								//命令ID
-			data_len = DeviceUUID != NULL ? (*(buf + 10) - UU_ID_LEN - 2) : (*(buf + 10));	//获取有效数据的长度
+			data_len = DeviceUUID != NULL ? (*(buf + 10) - (u8)(UU_ID_LEN - 2)) : (*(buf + 10));	//获取有效数据的长度
 			read_check_sum = *(buf + pos1 - 2);					//获取校验和
 			cal_check_sum = CalCheckSum(buf, pos1 - 2);			//计算校验和
 
@@ -44,19 +44,19 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 				switch(cmd_code)
 				{
 					case 0xD0:									//发送固定信息(心跳)，上行
-						ret = UpdateRelayModeInfo(cmd_code,cmd_id,buf + 10 + 36,data_len,outbuf);
+						ret = UpdateRelayModeInfo(cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
 					case 0xD1:									//控制继电器开闭状态
-						ret = ControlRelayState(cmd_code,cmd_id,buf + 10 + 36,data_len,outbuf);
+						ret = ControlRelayState(cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
-					case 0xD2:									//开关灯/调光，下行
-						ret = ControlDeviceReset(cmd_code,cmd_id,buf + 10 + 36,data_len,outbuf);
+					case 0xD2:									//重启设备
+						ret = ControlDeviceReset(cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
 					case 0xD3:									//设置定时发送间隔,下行
-						ret = SetDeviceUpLoadINCL(cmd_code,cmd_id,buf + 10 + 36,data_len,outbuf);
+						ret = SetDeviceUpLoadINCL(cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
 					case 0xD4:									//读取/发送信息
@@ -64,19 +64,19 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 					break;
 
 					case 0xD5:									//从服务器获取时间
-						ret = GetTimeDateFromServer(cmd_code,cmd_id,buf + 10 + 36,data_len,outbuf);
+						ret = GetTimeDateFromServer(cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
 					case 0xD6:									//设置继电器定时策略，下行
-						ret = SetRegularTimeGroups(cmd_code,cmd_id,buf + 10 + 36,data_len,outbuf);
+						ret = SetRegularTimeGroups(cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
 					case 0xD7:									//设置设备工作模式
-						ret = SetDeviceWorkMode(cmd_code,cmd_id,buf + 10 + 36,data_len,outbuf);
+						ret = SetDeviceWorkMode(cmd_code,cmd_id,buf + 11 + 36,data_len,outbuf);
 					break;
 
 					case 0x80:									//应答，下行,上行在别处处理
-						UnPackAckPacket(cmd_code,cmd_id,buf + 10 + 36,data_len);
+						UnPackAckPacket(cmd_code,cmd_id,buf + 11 + 36,data_len);
 					break;
 
 					default:									//此处要给云端应答一个功能码错误信息
@@ -129,9 +129,12 @@ u16 UpdateRelayModeInfo(u8 cmd_code,u8 cmd_id,u8 *buf,u8 len,u8 *outbuf)
 	u8 out_len = 0;
 
 	u8 data_buf[8] = {0,0,0,0,0,0,0,0};
-
-	out_len = PackDataOfRelayInfo(data_buf);
-	out_len = PackNetData(cmd_code,cmd_id,data_buf,out_len,outbuf);
+	
+	if(len == 0)
+	{
+		out_len = PackDataOfRelayInfo(data_buf);
+		out_len = PackNetData(cmd_code,cmd_id,data_buf,out_len,outbuf);
+	}
 
 	return out_len;
 }
@@ -148,8 +151,8 @@ u16 ControlRelayState(u8 cmd_code,u8 cmd_id,u8 *buf,u8 len,u8 *outbuf)
 
 	if(len == 4)												//数据长度必须是64
 	{
-		bit = ((u16)(*(buf + 0)) << 16) + (*(buf + 1));
-		state = ((u16)(*(buf + 2)) << 16) + (*(buf + 3));
+		bit = ((u16)(*(buf + 0)) << 8) + (*(buf + 1));
+		state = ((u16)(*(buf + 2)) << 8) + (*(buf + 3));
 
 		if(bit < 0x0FFF && state < 0x0FFF)
 		{
@@ -253,7 +256,7 @@ u16 SetDeviceUpLoadINCL(u8 cmd_code,u8 cmd_id,u8 *buf,u8 len,u8 *outbuf)
 
 	if(len == 2)												//数据长度必须是64
 	{
-		incl = ((u16)(*(buf + 0)) << 16) + (*(buf + 1));
+		incl = ((u16)(*(buf + 0)) << 8) + (*(buf + 1));
 
 		if(incl <= MAX_UPLOAD_INVL)
 		{

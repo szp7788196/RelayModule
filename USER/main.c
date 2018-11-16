@@ -31,15 +31,15 @@ int main(void)
 
 	__set_PRIMASK(0);	//开启全局中断
 
-	for(i = 0; i < 256; i ++)
-	{
-		AT24CXX_WriteOneByte(i,i);
-	}
+//	for(i = 0; i < 256; i ++)
+//	{
+//		AT24CXX_WriteOneByte(i,i);
+//	}
 
-	for(i = 0; i < 256; i ++)
-	{
-		eepbuf[i] = AT24CXX_ReadOneByte(i);
-	}
+//	for(i = 0; i < 256; i ++)
+//	{
+//		eepbuf[i] = AT24CXX_ReadOneByte(i);
+//	}
 
 	mem_init();
 

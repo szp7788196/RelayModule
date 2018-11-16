@@ -14,8 +14,20 @@ u16 MirrorAllRelayState = 0;
 
 void vTaskMAIN(void *pvParameters)
 {
+	time_t times_sec = 0;
+	
 	while(1)
 	{
+		if(DeviceWorkMode == MODE_AUTO)						//只有在自动模式下才进行策略判断
+		{
+			if(GetSysTick1s() - times_sec >= 1)
+			{
+				times_sec = GetSysTick1s();
+
+				AutoLoopRegularTimeGroups();
+			}
+		}
+		
 		if(MirrorOutPutControlBitState != OutPutControlState)
 		{
 			MirrorOutPutControlBitState = OutPutControlState;
@@ -47,7 +59,7 @@ void vTaskMAIN(void *pvParameters)
 }
 
 //轮询时间策略
-void AutoLoopRegularTimeGroups(u8 *percent)
+void AutoLoopRegularTimeGroups(void)
 {
 	u8 i = 0;
 	time_t seconds_now = 0;

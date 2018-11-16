@@ -2,6 +2,7 @@
 #include "delay.h"
 #include "usart.h"
 #include "at_protocol.h"
+#include "net_protocol.h"
 
 
 TaskHandle_t xHandleTaskHCI = NULL;
@@ -21,7 +22,8 @@ void vTaskHCI(void *pvParameters)
 		{
 			Usart1RecvEnd = 0;
 			
-			send_len1 = AT_CommandDataAnalysis(Usart1RxBuf,Usart1FrameLen,Usart1TxBuf,HoldReg);
+//			send_len1 = AT_CommandDataAnalysis(Usart1RxBuf,Usart1FrameLen,Usart1TxBuf,HoldReg);
+			send_len1 = NetDataAnalysis(Usart1RxBuf,Usart1FrameLen,Usart1TxBuf,HoldReg);
 			
 			memset(Usart1RxBuf,0,Usart1FrameLen);
 		}
@@ -34,7 +36,6 @@ void vTaskHCI(void *pvParameters)
 			
 			send_len1 = 0;
 		}
-		
 		
 		if(Usart2RecvEnd == 0xAA)
 		{
@@ -58,7 +59,7 @@ void vTaskHCI(void *pvParameters)
 			send_len2 = 0;
 		}
 		
-		delay_ms(100);
+		delay_ms(50);
 	}
 }
 
