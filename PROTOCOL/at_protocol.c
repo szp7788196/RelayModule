@@ -384,6 +384,8 @@ u8 AT_CommandRELAY(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 				
 				OutPutControlBit |= (1 << ch - 1);
 			
+				HaveNewActionCommand = 1;
+				
 				ret = 0;
 			}
 		}

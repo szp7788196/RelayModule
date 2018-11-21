@@ -45,7 +45,7 @@ u16 OutPutControlBit = 0;			//开出位标志
 u16 OutPutControlState = 0;			//开出位标志(具体哪几位)
 u16 AllRelayPowerState = 0;			//继电器输入端是否带电
 u16 AllRelayState = 0;				//继电器的状态
-
+u8 HaveNewActionCommand = 0;		//有新的动作指令	
 
 //在str1中查找str2，失败返回0xFF,成功返回str2首个元素在str1中的位置
 u16 MyStrstr(u8 *str1, u8 *str2, u16 str1_len, u16 str2_len)
@@ -897,7 +897,7 @@ u16 PackDataOfRelayInfo(u8 *outbuf)
 }
 
 //将数据打包成网络格式的数据
-u16 PackNetData(u8 fun_code,u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *outbuf)
+u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf)
 {
 	u16 len = 0;
 
@@ -909,32 +909,32 @@ u16 PackNetData(u8 fun_code,u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *outbuf)
 
 		*(outbuf + 7) = 0x68;
 		*(outbuf + 8) = fun_code;
-		*(outbuf + 9) = cmd_id;
-		*(outbuf + 10) = inbuf_len + UU_ID_LEN - 2;
+//		*(outbuf + 9) = cmd_id;
+		*(outbuf + 9) = inbuf_len + UU_ID_LEN - 2;
 
 		if(DeviceUUID != NULL)
 		{
-			memcpy(outbuf + 11,DeviceUUID,UU_ID_LEN - 2);		//UUID
+			memcpy(outbuf + 10,DeviceUUID,UU_ID_LEN - 2);		//UUID
 		}
 		else
 		{
-			memcpy(outbuf + 11,"000000000000000000000000000000000000",UU_ID_LEN - 2);	//默认UUID
+			memcpy(outbuf + 10,"000000000000000000000000000000000000",UU_ID_LEN - 2);	//默认UUID
 		}
 
-		memcpy(outbuf + 11 + UU_ID_LEN - 2,inbuf,inbuf_len);	//具体数据内容
+		memcpy(outbuf + 10 + UU_ID_LEN - 2,inbuf,inbuf_len);	//具体数据内容
 
-		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len) = CalCheckSum(outbuf, 11 + inbuf_len + UU_ID_LEN - 2);
+		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len) = CalCheckSum(outbuf, 10 + inbuf_len + UU_ID_LEN - 2);
 
-		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 1) = 0x16;
+		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 1) = 0x16;
 
-		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 2) = 0xFE;
-		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 3) = 0xFD;
-		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 4) = 0xFC;
-		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 5) = 0xFB;
-		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 6) = 0xFA;
-		*(outbuf + 11 + UU_ID_LEN - 2 + inbuf_len + 7) = 0xF9;
+		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 2) = 0xFE;
+		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 3) = 0xFD;
+		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 4) = 0xFC;
+		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 5) = 0xFB;
+		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 6) = 0xFA;
+		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 7) = 0xF9;
 
-		len = 11 + UU_ID_LEN - 2 + inbuf_len + 7 + 1;
+		len = 10 + UU_ID_LEN - 2 + inbuf_len + 7 + 1;
 	}
 	else
 	{

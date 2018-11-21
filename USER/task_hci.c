@@ -6,7 +6,7 @@
 
 
 TaskHandle_t xHandleTaskHCI = NULL;
-
+u8 anaysisok = 0;
 void vTaskHCI(void *pvParameters)
 {
 	u16 send_len1 = 0;
@@ -35,13 +35,16 @@ void vTaskHCI(void *pvParameters)
 			memset(Usart1TxBuf,0,send_len1);
 			
 			send_len1 = 0;
+			
+			anaysisok ++;
 		}
 		
 		if(Usart2RecvEnd == 0xAA)
 		{
 			Usart2RecvEnd = 0;
 			
-			send_len2 = AT_CommandDataAnalysis(Usart2RxBuf,Usart2FrameLen,Usart2TxBuf,HoldReg);
+//			send_len2 = AT_CommandDataAnalysis(Usart2RxBuf,Usart2FrameLen,Usart2TxBuf,HoldReg);
+			send_len2 = NetDataAnalysis(Usart2RxBuf,Usart2FrameLen,Usart2TxBuf,HoldReg);
 			
 			memset(Usart2RxBuf,0,Usart2FrameLen);
 		}

@@ -28,9 +28,10 @@ void vTaskMAIN(void *pvParameters)
 			}
 		}
 		
-		if(MirrorOutPutControlBitState != OutPutControlState)
+		if(MirrorOutPutControlBitState != OutPutControlState || HaveNewActionCommand == 1)
 		{
 			MirrorOutPutControlBitState = OutPutControlState;
+			HaveNewActionCommand = 0;
 
 			ControlAllRelay(MirrorOutPutControlBitState,&OutPutControlBit);
 		}

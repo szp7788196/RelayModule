@@ -318,6 +318,7 @@ extern u16 OutPutControlBit;			//开出位标志
 extern u16 OutPutControlState;			//开出位标志(具体哪几位)
 extern u16 AllRelayPowerState;			//继电器输入端是否带电
 extern u16 AllRelayState;				//继电器的状态
+extern u8 HaveNewActionCommand;			//有新的动作指令
 
 
 u16 MyStrstr(u8 *str1, u8 *str2, u16 str1_len, u16 str2_len);
@@ -369,7 +370,7 @@ u8 ReadRegularTimeGroups(void);
 void ReadParametersFromEEPROM(void);
 
 u16 PackDataOfRelayInfo(u8 *outbuf);
-u16 PackNetData(u8 fun_code,u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *outbuf);
+u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf);
 
 
 
