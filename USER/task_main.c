@@ -18,7 +18,7 @@ void vTaskMAIN(void *pvParameters)
 	
 	while(1)
 	{
-		if(DeviceWorkMode == MODE_AUTO)						//只有在自动模式下才进行策略判断
+		if(DeviceWorkMode == MODE_AUTO)					//只有在自动模式下才进行策略判断
 		{
 			if(GetSysTick1s() - times_sec >= 1)
 			{
