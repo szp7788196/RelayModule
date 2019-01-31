@@ -3,7 +3,8 @@
 #include "sys.h"
 
 
-#define RUN_LED PBout(5)
+#define GREEN_LED 	PBout(0)
+#define RED_LED 	PCout(4)
 
 
 void LED_Init(void);

@@ -12,8 +12,8 @@
 #define Usart4RxLen	128	
 #define Usart4TxLen	128
 
-#define DIR_485_TX		GPIO_SetBits(GPIOA, GPIO_Pin_4);
-#define DIR_485_RX		GPIO_ResetBits(GPIOA, GPIO_Pin_4);
+#define DIR_485_TX		GPIO_SetBits(GPIOA, GPIO_Pin_8);
+#define DIR_485_RX		GPIO_ResetBits(GPIOA, GPIO_Pin_8);
 
 
 extern u16 Usart1RxCnt;					//串口1接收到的数据长度

@@ -36,10 +36,6 @@ void vTaskMAIN(void *pvParameters)
 			ControlAllRelay(MirrorOutPutControlBitState,&OutPutControlBit);
 		}
 
-		AllRelayPowerState = GetAllInputState();		//获取各个继电器通道是否有电源输入
-
-		AllRelayState = GetAllOutPutState();			//获取各个继电器的输出状态
-
 		if(MirrorAllRelayState != AllRelayState)
 		{
 			MirrorAllRelayState = AllRelayState;

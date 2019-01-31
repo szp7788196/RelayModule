@@ -4,7 +4,7 @@
   
  
 
-#define KEY1  GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_1)//读取按键0
+#define KEY1  GPIO_ReadInputDataBit(GPIOC,GPIO_Pin_5)//读取按键0
 
 #define KEY_NULL	0
 #define KEY1_PRES	1		//KEY0  

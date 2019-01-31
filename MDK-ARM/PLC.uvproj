@@ -427,6 +427,11 @@
               <FileType>1</FileType>
               <FilePath>..\USER\task_hci.c</FilePath>
             </File>
+            <File>
+              <FileName>task_sensor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\task_sensor.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

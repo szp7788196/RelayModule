@@ -2,6 +2,7 @@
 #include "common.h"
 #include "task_led.h"
 #include "task_hci.h"
+#include "task_sensor.h"
 #include "task_main.h"
 
 /*********************************************************************************************************
@@ -41,6 +42,13 @@ void AppTaskCreate(void)
 				NULL,
 				4,
 				&xHandleTaskHCI);		//人机交互任务
+	
+	xTaskCreate(vTaskSENSOR,
+				"vTaskSENSOR",
+				128,
+				NULL,
+				5,
+				&xHandleTaskSENSOR);	//传感器采集任务
 	
 	xTaskCreate(vTaskMAIN,
 				"vTaskMAIN",
