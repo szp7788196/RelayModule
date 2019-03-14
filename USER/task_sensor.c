@@ -16,7 +16,7 @@ void vTaskSENSOR(void *pvParameters)
 
 		AllRelayState = GetAllOutPutState();			//获取各个继电器的输出状态
 
-		
+
 		delay_ms(100);
 	}
 }

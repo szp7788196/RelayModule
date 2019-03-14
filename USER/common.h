@@ -85,6 +85,12 @@
 #define UU_ID_ADD					55			//UUID存储地址
 #define UU_ID_LEN					38
 
+#define AREA_ID_ADD					121			//逻辑区码存储地址
+#define AREA_ID_LEN					3			//逻辑区长度
+
+#define BOX_ID_ADD					124			//物理区码存储地址
+#define BOX_ID_LEN					3			//物理区长度
+
 #define UPLOAD_INVL_ADD				256			//数据上传周期存储地址
 #define UPLOAD_INVL_LEN				4
 
@@ -297,6 +303,8 @@ extern u8 *HardWareVersion;				//硬件版本号
 extern u8 *DeviceName;					//设备名称
 extern u8 *DeviceID;					//设备ID
 extern u8 *DeviceUUID;					//设备UUID
+extern u8 DeviceAreaID;					//设备逻辑区码
+extern u8 DeviceBoxID;					//设备物理区码
 
 /***************************运行参数相关*****************************/
 extern u16 UpLoadINCL;					//数据上传时间间隔0~65535秒
@@ -353,6 +361,8 @@ u8 CopyStrToPointer(u8 **pointer, u8 *str, u8 len);
 u8 GetDeviceName(void);
 u8 GetDeviceID(void);
 u8 GetDeviceUUID(void);
+u8 ReadDeviceAreaID(void);
+u8 ReadDeviceBoxID(void);
 u8 ReadUpLoadINVL(void);
 
 

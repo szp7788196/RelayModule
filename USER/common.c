@@ -33,6 +33,8 @@ u8 *HardWareVersion = NULL;			//硬件版本号
 u8 *DeviceName = NULL;				//设备名称
 u8 *DeviceID = NULL;				//设备ID
 u8 *DeviceUUID = NULL;				//设备UUID
+u8 DeviceAreaID = 0xFF;				//设备逻辑区码
+u8 DeviceBoxID = 0xFF;				//设备物理区码
 
 /***************************运行参数相关*****************************/
 u16 UpLoadINCL = 10;				//数据上传时间间隔0~65535秒
@@ -524,6 +526,46 @@ u8 GetDeviceUUID(void)
 	return ret;
 }
 
+//读取逻辑区号
+u8 ReadDeviceAreaID(void)
+{
+	u8 ret = 0;
+
+	ret = ReadDataFromEepromToHoldBuf(HoldReg,AREA_ID_ADD, AREA_ID_LEN);
+
+	if(ret)
+	{
+		if(HoldReg[AREA_ID_ADD] >= 0xFE)
+		{
+			return 0;
+		}
+		
+		DeviceAreaID = HoldReg[AREA_ID_ADD];
+	}
+
+	return ret;
+}
+
+//读取物理区号
+u8 ReadDeviceBoxID(void)
+{
+	u8 ret = 0;
+
+	ret = ReadDataFromEepromToHoldBuf(HoldReg,BOX_ID_ADD, BOX_ID_LEN);
+
+	if(ret)
+	{
+		if(HoldReg[BOX_ID_ADD] >= 0xFE)
+		{
+			return 0;
+		}
+		
+		DeviceBoxID = HoldReg[BOX_ID_ADD];
+	}
+
+	return ret;
+}
+
 
 //读取应用程序版本号
 u8 ReadSoftWareVersion(void)
@@ -872,6 +914,8 @@ void ReadParametersFromEEPROM(void)
 	ReadDeviceName();
 	ReadDeviceID();
 	ReadDeviceUUID();
+	ReadDeviceAreaID();
+	ReadDeviceBoxID();
 	ReadUpLoadINVL();
 	ReadAllRelayState();
 	ReadRegularTimeGroups();
@@ -908,9 +952,9 @@ u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf)
 		memcpy(outbuf + 1,DeviceID,DEVICE_ID_LEN - 2);			//设备ID
 
 		*(outbuf + 7) = 0x68;
-		*(outbuf + 8) = fun_code;
-//		*(outbuf + 9) = cmd_id;
-		*(outbuf + 9) = inbuf_len + UU_ID_LEN - 2;
+		*(outbuf + 8) = DeviceAreaID;
+		*(outbuf + 9) = DeviceBoxID;
+		
 
 		if(DeviceUUID != NULL)
 		{
@@ -921,20 +965,23 @@ u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf)
 			memcpy(outbuf + 10,"000000000000000000000000000000000000",UU_ID_LEN - 2);	//默认UUID
 		}
 
-		memcpy(outbuf + 10 + UU_ID_LEN - 2,inbuf,inbuf_len);	//具体数据内容
+		*(outbuf + 46) = fun_code;
+		*(outbuf + 47) = inbuf_len;
+		
+		memcpy(outbuf + 48,inbuf,inbuf_len);	//具体数据内容
 
-		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len) = CalCheckSum(outbuf, 10 + inbuf_len + UU_ID_LEN - 2);
+		*(outbuf + 48 + inbuf_len + 0) = CalCheckSum(outbuf, 48 + inbuf_len);
 
-		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 1) = 0x16;
+		*(outbuf + 48 + inbuf_len + 1) = 0x16;
 
-		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 2) = 0xFE;
-		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 3) = 0xFD;
-		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 4) = 0xFC;
-		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 5) = 0xFB;
-		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 6) = 0xFA;
-		*(outbuf + 10 + UU_ID_LEN - 2 + inbuf_len + 7) = 0xF9;
+		*(outbuf + 48 + inbuf_len + 2) = 0xFE;
+		*(outbuf + 48 + inbuf_len + 3) = 0xFD;
+		*(outbuf + 48 + inbuf_len + 4) = 0xFC;
+		*(outbuf + 48 + inbuf_len + 5) = 0xFB;
+		*(outbuf + 48 + inbuf_len + 6) = 0xFA;
+		*(outbuf + 48 + inbuf_len + 7) = 0xF9;
 
-		len = 10 + UU_ID_LEN - 2 + inbuf_len + 7 + 1;
+		len = 48 + inbuf_len + 7 + 1;
 	}
 	else
 	{

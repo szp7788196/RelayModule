@@ -39,7 +39,7 @@ u8 KEY_Scan(u8 mode)
 
 		key_up=0;
 
-		if(KEY1 == 1)
+		if(KEY1 == 0)
 		{
 			return KEY1_PRES;
 		}
