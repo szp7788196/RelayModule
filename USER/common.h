@@ -83,7 +83,7 @@
 #define DEVICE_ID_LEN				8
 
 #define UU_ID_ADD					55			//UUID存储地址
-#define UU_ID_LEN					38
+#define UU_ID_LEN					19
 
 #define AREA_ID_ADD					121			//逻辑区码存储地址
 #define AREA_ID_LEN					3			//逻辑区长度
@@ -380,7 +380,7 @@ u8 ReadRegularTimeGroups(void);
 void ReadParametersFromEEPROM(void);
 
 u16 PackDataOfRelayInfo(u8 *outbuf);
-u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf);
+u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf,u8 id_type);
 
 
 

@@ -305,7 +305,7 @@ u8 AT_CommandDEVID(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 			{
 				CopyStrToPointer(&DeviceID, content_hex,content_str_len / 2);
 
-				memcpy(&HoldReg[DEVICE_ID_ADD],content_hex,DEVICE_ID_ADD - 2);
+				memcpy(&HoldReg[DEVICE_ID_ADD],content_hex,DEVICE_ID_LEN - 2);
 
 				WriteDataFromHoldBufToEeprom(&HoldReg[DEVICE_ID_ADD],DEVICE_ID_ADD, DEVICE_ID_LEN - 2);
 
@@ -321,7 +321,7 @@ u8 AT_CommandDEVID(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 u8 AT_CommandUUID(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 {
 	u8 ret = 1;
-	u8 content[37];
+	u8 content[UU_ID_LEN];
 	u8 content_len = 0;
 
 	if(inbuf_len == AT_CommandBuf[cmd_id].len + 3 + 2)
@@ -338,17 +338,17 @@ u8 AT_CommandUUID(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 	}
 	else if(MyStrstr(inbuf, (u8 *)"=\"", inbuf_len, 2) != 0xFFFF)
 	{
-		memset(content,0,37);
+		memset(content,0,UU_ID_LEN);
 
 		if(get_str1(inbuf, "\"", 1, "\"", 2, content))
 		{
 			content_len = strlen((char *)content);
 
-			if(content_len == 36)
+			if(content_len == UU_ID_LEN - 2)
 			{
 				CopyStrToPointer(&DeviceUUID, content,content_len);
 
-				memcpy(&HoldReg[UU_ID_ADD],content,UU_ID_ADD - 2);
+				memcpy(&HoldReg[UU_ID_ADD],content,UU_ID_LEN - 2);
 
 				WriteDataFromHoldBufToEeprom(&HoldReg[UU_ID_ADD],UU_ID_ADD, UU_ID_LEN - 2);
 

@@ -683,12 +683,12 @@ u8 ReadDeviceUUID(void)
 	{
 		if(DeviceUUID == NULL)
 		{
-			DeviceUUID = (u8 *)mymalloc(sizeof(u8) * 65);
+			DeviceUUID = (u8 *)mymalloc(sizeof(u8) * UU_ID_LEN);
 		}
 
-		memset(DeviceUUID,0,65);
+		memset(DeviceUUID,0,UU_ID_LEN);
 
-		sprintf((char *)DeviceUUID, "000000000000000000000000000000000000");
+		sprintf((char *)DeviceUUID, "00867725035002033");
 	}
 
 	return ret;
@@ -941,8 +941,9 @@ u16 PackDataOfRelayInfo(u8 *outbuf)
 }
 
 //将数据打包成网络格式的数据
-u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf)
+u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf,u8 id_type)
 {
+	u8 i = 0;
 	u16 len = 0;
 
 	*(outbuf + 0) = 0x68;
@@ -962,26 +963,34 @@ u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf)
 		}
 		else
 		{
-			memcpy(outbuf + 10,"000000000000000000000000000000000000",UU_ID_LEN - 2);	//默认UUID
+			memcpy(outbuf + 10,"00000000000000000",UU_ID_LEN - 2);	//默认UUID
 		}
 
-		*(outbuf + 46) = fun_code;
-		*(outbuf + 47) = inbuf_len;
+		if(id_type == 0)
+		{
+			for(i = 0; i < 17; i ++)
+			{
+				*(outbuf + 10 + i) = *(outbuf + 10 + i) - 0x30;
+			}
+		}
 		
-		memcpy(outbuf + 48,inbuf,inbuf_len);	//具体数据内容
+		*(outbuf + 27) = fun_code;
+		*(outbuf + 28) = inbuf_len;
+		
+		memcpy(outbuf + 29,inbuf,inbuf_len);	//具体数据内容
 
-		*(outbuf + 48 + inbuf_len + 0) = CalCheckSum(outbuf, 48 + inbuf_len);
+		*(outbuf + 29 + inbuf_len + 0) = CalCheckSum(outbuf, 29 + inbuf_len);
 
-		*(outbuf + 48 + inbuf_len + 1) = 0x16;
+		*(outbuf + 29 + inbuf_len + 1) = 0x16;
 
-		*(outbuf + 48 + inbuf_len + 2) = 0xFE;
-		*(outbuf + 48 + inbuf_len + 3) = 0xFD;
-		*(outbuf + 48 + inbuf_len + 4) = 0xFC;
-		*(outbuf + 48 + inbuf_len + 5) = 0xFB;
-		*(outbuf + 48 + inbuf_len + 6) = 0xFA;
-		*(outbuf + 48 + inbuf_len + 7) = 0xF9;
+		*(outbuf + 29 + inbuf_len + 2) = 0xFE;
+		*(outbuf + 29 + inbuf_len + 3) = 0xFD;
+		*(outbuf + 29 + inbuf_len + 4) = 0xFC;
+		*(outbuf + 29 + inbuf_len + 5) = 0xFB;
+		*(outbuf + 29 + inbuf_len + 6) = 0xFA;
+		*(outbuf + 29 + inbuf_len + 7) = 0xF9;
 
-		len = 48 + inbuf_len + 7 + 1;
+		len = 29 + inbuf_len + 7 + 1;
 	}
 	else
 	{
