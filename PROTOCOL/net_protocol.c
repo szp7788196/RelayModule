@@ -107,7 +107,7 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 						break;
 
 						case 0xD4:									//读取/发送信息
-
+							ret = ReadDeviceInfo(cmd_code,data,data_len,outbuf,response,uuid_type);
 						break;
 
 						case 0xD5:									//从服务器获取时间
@@ -347,6 +347,27 @@ u16 SetDeviceUpLoadINCL(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type
 	return out_len;
 }
 
+//读取继电器信息
+u16 ReadDeviceInfo(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+{
+	u8 out_len = 0;
+
+	u8 data_buf[2] = {0,0};
+	
+	if(len == 0)
+	{
+		if(resp == 1)
+		{
+			data_buf[0] = (u8)(((u16)SOFT_WARE_VRESION) >> 8);
+			data_buf[1] = (u8)SOFT_WARE_VRESION;
+			
+			out_len = PackNetData(cmd_code,data_buf,2,outbuf,id_type);
+		}
+	}
+
+	return out_len;
+}
+
 //从服务器获取时间戳
 u16 GetTimeDateFromServer(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 {
@@ -408,11 +429,11 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_typ
 
 	data_buf[0] = cmd_code;
 
-	if(len % 10 == 0)							//数据长度必须是7的倍数
+	if(len % 10 == 0)							//数据长度必须是10的倍数
 	{
 		group_num = len / 10;									//计算下发了几组数据
 
-		if(group_num % 2 == 0 || group_num <= MAX_GROUP_NUM)	//组数必须是2的倍数，并且要小于MAX_GROUP_NUM
+		if(group_num <= MAX_GROUP_NUM)	//组数必须是2的倍数，并且要小于MAX_GROUP_NUM
 		{
 			TimeGroupNumber = group_num;
 
@@ -437,30 +458,21 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_typ
 				time_group[j + 1] = (u8)(crc16 & 0x00FF);
 			}
 
-			for(i = 0; i <= group_num / 2; i += 2)
+			for(i = 0; i < group_num; i ++)
 			{
-				RegularTimeStruct[i / 2].type 			= time_group[(i + 0) * 12 + 0];
+				RegularTimeStruct[i].type 			= time_group[i * 12 + 0];
 
-				RegularTimeStruct[i / 2].s_year 		= time_group[(i + 0) * 12 + 1];
-				RegularTimeStruct[i / 2].s_month 		= time_group[(i + 0) * 12 + 2];
-				RegularTimeStruct[i / 2].s_date 		= time_group[(i + 0) * 12 + 3];
-				RegularTimeStruct[i / 2].s_hour 		= time_group[(i + 0) * 12 + 4];
-				RegularTimeStruct[i / 2].s_minute 		= time_group[(i + 0) * 12 + 5];
+				RegularTimeStruct[i].year 			= time_group[i * 12 + 1];
+				RegularTimeStruct[i].month 			= time_group[i * 12 + 2];
+				RegularTimeStruct[i].date 			= time_group[i * 12 + 3];
+				RegularTimeStruct[i].hour 			= time_group[i * 12 + 4];
+				RegularTimeStruct[i].minute 		= time_group[i * 12 + 5];
 
-				RegularTimeStruct[i / 2].control_bit	= (((u16)time_group[(i + 0) * 12 + 6]) << 8) + (u16)time_group[(i + 0) * 12 + 7];
-				RegularTimeStruct[i / 2].control_state	= (((u16)time_group[(i + 0) * 12 + 8]) << 8) + (u16)time_group[(i + 0) * 12 + 9];
-
-				RegularTimeStruct[i / 2].e_year 		= time_group[(i + 1) * 12 + 1];
-				RegularTimeStruct[i / 2].e_month 		= time_group[(i + 1) * 12 + 2];
-				RegularTimeStruct[i / 2].e_date 		= time_group[(i + 1) * 12 + 3];
-				RegularTimeStruct[i / 2].e_hour 		= time_group[(i + 1) * 12 + 4];
-				RegularTimeStruct[i / 2].e_minute 		= time_group[(i + 1) * 12 + 5];
-
-				RegularTimeStruct[i / 2].s_seconds  	= RegularTimeStruct[i / 2].s_hour * 3600 + RegularTimeStruct[i / 2].s_minute * 60;
-				RegularTimeStruct[i / 2].e_seconds  	= RegularTimeStruct[i / 2].e_hour * 3600 + RegularTimeStruct[i / 2].e_minute * 60;
+				RegularTimeStruct[i].control_bit	= (((u16)time_group[i * 12 + 6]) << 8) + (u16)time_group[i * 12 + 7];
+				RegularTimeStruct[i].control_state	= (((u16)time_group[i * 12 + 8]) << 8) + (u16)time_group[i * 12 + 9];
 			}
 
-			for(i = 0; i < group_num * 12 + group_num * 2; i ++)				//每组7个字节+2个字节(CRC16)
+			for(i = 0; i < group_num * 12 + group_num; i ++)				//每组7个字节+2个字节(CRC16)
 			{
 				AT24CXX_WriteOneByte(TIME_RULE_ADD + i,time_group[i]);
 			}

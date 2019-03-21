@@ -723,7 +723,7 @@ u8 ReadTimeGroupNumber(void)
 
 	if(ret)
 	{
-		if(HoldReg[TIME_GROUP_NUM_ADD] >= 2 && HoldReg[TIME_GROUP_NUM_ADD] <= MAX_GROUP_NUM)
+		if(HoldReg[TIME_GROUP_NUM_ADD] <= MAX_GROUP_NUM)
 		{
 			TimeGroupNumber = HoldReg[TIME_GROUP_NUM_ADD];
 		}
@@ -845,7 +845,7 @@ u8 ReadRegularTimeGroups(void)
 
 	ReadTimeGroupNumber();		//读取时间策略条数
 
-	if(TimeGroupNumber != 0 && TimeGroupNumber % 2 == 0)
+	if(TimeGroupNumber != 0)
 	{
 		memset(time_group,0,256);
 		memset(read_success_buf_flag,0,MAX_GROUP_NUM);
@@ -866,41 +866,32 @@ u8 ReadRegularTimeGroups(void)
 			}
 		}
 
-		for(i = 0; i <= TimeGroupNumber / 2; i += 2)
+		for(i = 0; i < TimeGroupNumber; i ++)
 		{
-			if(read_success_buf_flag[i + 0] == 1 && read_success_buf_flag[i + 1] == 1)
+			if(read_success_buf_flag[i] == 1)
 			{
-				RegularTimeStruct[i / 2].type 			= time_group[(i + 0) * 12 + 0];
+				RegularTimeStruct[i].type 			= time_group[i * 12 + 0];
 
-				RegularTimeStruct[i / 2].s_year 		= time_group[(i + 0) * 12 + 1];
-				RegularTimeStruct[i / 2].s_month 		= time_group[(i + 0) * 12 + 2];
-				RegularTimeStruct[i / 2].s_date 		= time_group[(i + 0) * 12 + 3];
-				RegularTimeStruct[i / 2].s_hour 		= time_group[(i + 0) * 12 + 4];
-				RegularTimeStruct[i / 2].s_minute 		= time_group[(i + 0) * 12 + 5];
+				RegularTimeStruct[i].year 			= time_group[i * 12 + 1];
+				RegularTimeStruct[i].month 			= time_group[i * 12 + 2];
+				RegularTimeStruct[i].date 			= time_group[i * 12 + 3];
+				RegularTimeStruct[i].hour 			= time_group[i * 12 + 4];
+				RegularTimeStruct[i].minute 		= time_group[i * 12 + 5];
 
-				RegularTimeStruct[i / 2].control_bit	= (((u16)time_group[(i + 0) * 12 + 6]) << 8) + (u16)time_group[(i + 0) * 12 + 7];
-				RegularTimeStruct[i / 2].control_state	= (((u16)time_group[(i + 0) * 12 + 8]) << 8) + (u16)time_group[(i + 0) * 12 + 9];
-
-				RegularTimeStruct[i / 2].e_year 		= time_group[(i + 1) * 12 + 1];
-				RegularTimeStruct[i / 2].e_month 		= time_group[(i + 1) * 12 + 2];
-				RegularTimeStruct[i / 2].e_date 		= time_group[(i + 1) * 12 + 3];
-				RegularTimeStruct[i / 2].e_hour 		= time_group[(i + 1) * 12 + 4];
-				RegularTimeStruct[i / 2].e_minute 		= time_group[(i + 1) * 12 + 5];
-
-				RegularTimeStruct[i / 2].s_seconds 		= RegularTimeStruct[i / 2].s_hour * 3600 + RegularTimeStruct[i / 2].s_minute * 60;
-				RegularTimeStruct[i / 2].e_seconds 		= RegularTimeStruct[i / 2].e_hour * 3600 + RegularTimeStruct[i / 2].e_minute * 60;
+				RegularTimeStruct[i].control_bit	= (((u16)time_group[i * 12 + 6]) << 8) + (u16)time_group[i * 12 + 7];
+				RegularTimeStruct[i].control_state	= (((u16)time_group[i * 12 + 8]) << 8) + (u16)time_group[i * 12 + 9];
 			}
 		}
 
-		for(i = 0; i <= TimeGroupNumber / 2; i += 2)
-		{
-			if(read_success_buf_flag[i + 0] != 1 || read_success_buf_flag[i + 1] != 1)
-			{
-				memcpy(&RegularTimeStruct[i / 2],&RegularTimeStruct[i + 2 / 2],sizeof(RegularTime_S));
-				read_success_buf_flag[i + 2 + 0] = 0;
-				read_success_buf_flag[i + 2 + 1] = 0;
-			}
-		}
+//		for(i = 0; i <= TimeGroupNumber; i ++)
+//		{
+//			if(read_success_buf_flag[i] != 1)
+//			{
+//				memcpy(&RegularTimeStruct[i / 2],&RegularTimeStruct[i + 2 / 2],sizeof(RegularTime_S));
+//				read_success_buf_flag[i + 2 + 0] = 0;
+//				read_success_buf_flag[i + 2 + 1] = 0;
+//			}
+//		}
 	}
 
 	return ret;

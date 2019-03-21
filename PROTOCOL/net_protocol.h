@@ -25,6 +25,7 @@ u16 ControlRelayState(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 SetUpdateFirmWareInfo(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 ControlDeviceReset(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 SetDeviceUpLoadINCL(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type);
+u16 ReadDeviceInfo(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 GetTimeDateFromServer(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 SetDeviceWorkMode(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type);

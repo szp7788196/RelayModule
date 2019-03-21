@@ -119,19 +119,11 @@ struct RegularTime
 {
 	u8 type;			//策略类别Bit0:1 工作日 Bit1:1 周末 Bit2:1节日
 
-	u8 s_year;
-	u8 s_month;
-	u8 s_date;
-	u8 s_hour;
-	u8 s_minute;
-	time_t s_seconds;
-
-	u8 e_year;
-	u8 e_month;
-	u8 e_date;
-	u8 e_hour;
-	u8 e_minute;
-	time_t e_seconds;
+	u8 year;
+	u8 month;
+	u8 date;
+	u8 hour;
+	u8 minute;
 
 	u16 control_bit;	//位指定字节
 	u16 control_state;	//状态指定字节

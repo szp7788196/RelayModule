@@ -5,6 +5,10 @@
 #include "tpic6c595.h"
 
 
+//#define FORWARD
+#define CH_NUM		12
+
+
 void ControlAppointedRelay(u8 ch,u8 state);
 void ControlAllRelay(u16 out_put_control_bit,u16 *ch);
 
