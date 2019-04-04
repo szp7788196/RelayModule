@@ -40,6 +40,7 @@ u8 DeviceBoxID = 0xFF;				//设备物理区码
 u16 UpLoadINCL = 10;				//数据上传时间间隔0~65535秒
 u8 GetTimeOK = 0;					//成功获取时间标志
 u8 DeviceWorkMode = 0;				//运行模式，0：自动，1：手动
+u16 RelayActionINCL = 10;			//数据上传时间间隔0~65535毫秒
 
 /***************************其他*****************************/
 u8 NeedToReset = 0;					//复位/重启标志
@@ -688,7 +689,7 @@ u8 ReadDeviceUUID(void)
 
 		memset(DeviceUUID,0,UU_ID_LEN);
 
-		sprintf((char *)DeviceUUID, "00867725035002033");
+		sprintf((char *)DeviceUUID, "00000000000000000");
 	}
 
 	return ret;
@@ -703,11 +704,31 @@ u8 ReadUpLoadINVL(void)
 
 	if(ret)
 	{
-		UpLoadINCL = (((u16)HoldReg[UPLOAD_INVL_ADD + 0]) << 8) + (u16)HoldReg[UPLOAD_INVL_ADD +1] & 0x00FF;
+		UpLoadINCL = (((u16)HoldReg[UPLOAD_INVL_ADD + 0]) << 8) + (u16)HoldReg[UPLOAD_INVL_ADD +1];
 
 		if(UpLoadINCL > MAX_UPLOAD_INVL)
 		{
 			UpLoadINCL = 10;
+		}
+	}
+
+	return ret;
+}
+
+//读取继电器动作间隔
+u8 ReadRelayActionINCL(void)
+{
+	u8 ret = 0;
+
+	ret = ReadDataFromEepromToHoldBuf(HoldReg,REALY_ACTION_INVL_ADD, REALY_ACTION_INVL_LEN);
+
+	if(ret)
+	{
+		RelayActionINCL = (((u16)HoldReg[REALY_ACTION_INVL_ADD + 0]) << 8) + (u16)HoldReg[REALY_ACTION_INVL_ADD +1];
+
+		if(RelayActionINCL > MAX_REALY_ACTION_INVL)
+		{
+			RelayActionINCL = 10;
 		}
 	}
 
@@ -852,12 +873,12 @@ u8 ReadRegularTimeGroups(void)
 
 		for(i = 0; i < TimeGroupNumber; i ++)
 		{
-			for(j = i * 12; j < i * 12 + 12; j ++)
+			for(j = i * TIME_RULE_LEN; j < i * TIME_RULE_LEN + TIME_RULE_LEN; j ++)
 			{
 				time_group[j] = AT24CXX_ReadOneByte(TIME_RULE_ADD + j);
 			}
 
-			cal_crc = CRC16(&time_group[j - 12],10);
+			cal_crc = CRC16(&time_group[j - TIME_RULE_LEN],10);
 			read_crc = (((u16)time_group[j - 2]) << 8) + (u16)time_group[j - 1];
 
 			if(cal_crc == read_crc)
@@ -870,28 +891,18 @@ u8 ReadRegularTimeGroups(void)
 		{
 			if(read_success_buf_flag[i] == 1)
 			{
-				RegularTimeStruct[i].type 			= time_group[i * 12 + 0];
+				RegularTimeStruct[i].type 			= time_group[i * TIME_RULE_LEN + 0];
 
-				RegularTimeStruct[i].year 			= time_group[i * 12 + 1];
-				RegularTimeStruct[i].month 			= time_group[i * 12 + 2];
-				RegularTimeStruct[i].date 			= time_group[i * 12 + 3];
-				RegularTimeStruct[i].hour 			= time_group[i * 12 + 4];
-				RegularTimeStruct[i].minute 		= time_group[i * 12 + 5];
+				RegularTimeStruct[i].year 			= time_group[i * TIME_RULE_LEN + 1];
+				RegularTimeStruct[i].month 			= time_group[i * TIME_RULE_LEN + 2];
+				RegularTimeStruct[i].date 			= time_group[i * TIME_RULE_LEN + 3];
+				RegularTimeStruct[i].hour 			= time_group[i * TIME_RULE_LEN + 4];
+				RegularTimeStruct[i].minute 		= time_group[i * TIME_RULE_LEN + 5];
 
-				RegularTimeStruct[i].control_bit	= (((u16)time_group[i * 12 + 6]) << 8) + (u16)time_group[i * 12 + 7];
-				RegularTimeStruct[i].control_state	= (((u16)time_group[i * 12 + 8]) << 8) + (u16)time_group[i * 12 + 9];
+				RegularTimeStruct[i].control_bit	= (((u16)time_group[i * TIME_RULE_LEN + 6]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 7];
+				RegularTimeStruct[i].control_state	= (((u16)time_group[i * TIME_RULE_LEN + 8]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 9];
 			}
 		}
-
-//		for(i = 0; i <= TimeGroupNumber; i ++)
-//		{
-//			if(read_success_buf_flag[i] != 1)
-//			{
-//				memcpy(&RegularTimeStruct[i / 2],&RegularTimeStruct[i + 2 / 2],sizeof(RegularTime_S));
-//				read_success_buf_flag[i + 2 + 0] = 0;
-//				read_success_buf_flag[i + 2 + 1] = 0;
-//			}
-//		}
 	}
 
 	return ret;
@@ -908,6 +919,7 @@ void ReadParametersFromEEPROM(void)
 	ReadDeviceAreaID();
 	ReadDeviceBoxID();
 	ReadUpLoadINVL();
+	ReadRelayActionINCL();
 	ReadAllRelayState();
 	ReadRegularTimeGroups();
 }

@@ -62,6 +62,7 @@
 #define TIME_BUF_LEN				256
 
 #define MAX_UPLOAD_INVL				65500
+#define MAX_REALY_ACTION_INVL		65500
 
 #define TYPE_WEEKDAY				0x01
 #define TYPE_WEEKEND				0x02
@@ -93,6 +94,9 @@
 
 #define UPLOAD_INVL_ADD				256			//数据上传周期存储地址
 #define UPLOAD_INVL_LEN				4
+
+#define REALY_ACTION_INVL_ADD		266			//继电器动作间隔时间存储地址
+#define REALY_ACTION_INVL_LEN		4
 
 #define OTA_INFO_ADD				301			//OTA信息存储地址
 #define OTA_INFO_LEN				9
@@ -302,6 +306,7 @@ extern u8 DeviceBoxID;					//设备物理区码
 extern u16 UpLoadINCL;					//数据上传时间间隔0~65535秒
 extern u8 GetTimeOK;					//成功获取时间标志
 extern u8 DeviceWorkMode;				//运行模式，0：自动，1：手动
+extern u16 RelayActionINCL;			//数据上传时间间隔0~65535毫秒
 
 extern u8 NeedToReset;					//复位/重启标志
 
@@ -356,6 +361,7 @@ u8 GetDeviceUUID(void);
 u8 ReadDeviceAreaID(void);
 u8 ReadDeviceBoxID(void);
 u8 ReadUpLoadINVL(void);
+u8 ReadRelayActionINCL(void);
 
 
 u8 ReadSoftWareVersion(void);

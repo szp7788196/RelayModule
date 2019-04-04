@@ -121,6 +121,10 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 						case 0xD7:									//设置设备工作模式
 							ret = SetDeviceWorkMode(cmd_code,data,data_len,outbuf,response,uuid_type);
 						break;
+						
+						case 0xD8:									//设置定时发送间隔,下行
+							ret = SetRelayActionINCL(cmd_code,data,data_len,outbuf,response,uuid_type);
+						break;
 
 						case 0x80:									//应答，下行,上行在别处处理
 							UnPackAckPacket(cmd_code,data,data_len);
@@ -447,7 +451,7 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_typ
 
 			for(i = 0; i < group_num; i ++)
 			{
-				for(j = i * 12; j < i * 12 + 10; j ++, k ++)
+				for(j = i * TIME_RULE_LEN; j < i * TIME_RULE_LEN + 10; j ++, k ++)
 				{
 					time_group[j] = *(buf + k);
 				}
@@ -460,19 +464,19 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_typ
 
 			for(i = 0; i < group_num; i ++)
 			{
-				RegularTimeStruct[i].type 			= time_group[i * 12 + 0];
+				RegularTimeStruct[i].type 			= time_group[i * TIME_RULE_LEN + 0];
 
-				RegularTimeStruct[i].year 			= time_group[i * 12 + 1];
-				RegularTimeStruct[i].month 			= time_group[i * 12 + 2];
-				RegularTimeStruct[i].date 			= time_group[i * 12 + 3];
-				RegularTimeStruct[i].hour 			= time_group[i * 12 + 4];
-				RegularTimeStruct[i].minute 		= time_group[i * 12 + 5];
+				RegularTimeStruct[i].year 			= time_group[i * TIME_RULE_LEN + 1];
+				RegularTimeStruct[i].month 			= time_group[i * TIME_RULE_LEN + 2];
+				RegularTimeStruct[i].date 			= time_group[i * TIME_RULE_LEN + 3];
+				RegularTimeStruct[i].hour 			= time_group[i * TIME_RULE_LEN + 4];
+				RegularTimeStruct[i].minute 		= time_group[i * TIME_RULE_LEN + 5];
 
-				RegularTimeStruct[i].control_bit	= (((u16)time_group[i * 12 + 6]) << 8) + (u16)time_group[i * 12 + 7];
-				RegularTimeStruct[i].control_state	= (((u16)time_group[i * 12 + 8]) << 8) + (u16)time_group[i * 12 + 9];
+				RegularTimeStruct[i].control_bit	= (((u16)time_group[i * TIME_RULE_LEN + 6]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 7];
+				RegularTimeStruct[i].control_state	= (((u16)time_group[i * TIME_RULE_LEN + 8]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 9];
 			}
 
-			for(i = 0; i < group_num * 12 + group_num; i ++)				//每组7个字节+2个字节(CRC16)
+			for(i = 0; i < group_num * TIME_RULE_LEN + group_num; i ++)				//每组7个字节+2个字节(CRC16)
 			{
 				AT24CXX_WriteOneByte(TIME_RULE_ADD + i,time_group[i]);
 			}
@@ -543,6 +547,44 @@ u16 SetDeviceUUID(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 		GetDeviceUUID();
 
 		WriteDataFromHoldBufToEeprom(&HoldReg[UU_ID_ADD],UU_ID_ADD, UU_ID_LEN - 2);
+	}
+	else
+	{
+		data_buf[1] = 2;
+	}
+
+	if(resp == 1)
+	{
+		out_len = PackAckPacket(cmd_code,data_buf,outbuf,id_type);
+	}
+
+	return out_len;
+}
+
+//设置继电器动作间隔
+u16 SetRelayActionINCL(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+{
+	u8 out_len = 0;
+	u8 data_buf[2] = {0,0};
+	u16 incl;
+
+	data_buf[0] = cmd_code;
+
+	if(len == 2)												//数据长度必须是64
+	{
+		incl = ((u16)(*(buf + 0)) << 8) + (*(buf + 1));
+
+		if(incl <= MAX_REALY_ACTION_INVL)
+		{
+			RelayActionINCL = incl;
+
+			memcpy(&HoldReg[REALY_ACTION_INVL_ADD],buf,2);
+			WriteDataFromHoldBufToEeprom(&HoldReg[REALY_ACTION_INVL_ADD],REALY_ACTION_INVL_ADD, REALY_ACTION_INVL_LEN - 2);
+		}
+		else
+		{
+			data_buf[1] = 1;
+		}
 	}
 	else
 	{

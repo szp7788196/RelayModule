@@ -64,6 +64,13 @@ void AT_CommandInit(void)
 	memset(AT_CommandBuf[i].cmd,0,AT_CommandBuf[i].len);
 	memcpy(AT_CommandBuf[i].cmd,"BOX",AT_CommandBuf[i].len);
 	i ++;
+	
+	AT_CommandBuf[i].id = i;
+	AT_CommandBuf[i].len = strlen("ACTIONINTERVAL");
+	AT_CommandBuf[i].cmd = (char *)mymalloc(sizeof(char) * AT_CommandBuf[i].len + 1);
+	memset(AT_CommandBuf[i].cmd,0,AT_CommandBuf[i].len);
+	memcpy(AT_CommandBuf[i].cmd,"ACTIONINTERVAL",AT_CommandBuf[i].len);
+	i ++;
 }
 
 
@@ -155,6 +162,10 @@ u16 AT_CommandDataAnalysis(u8 *inbuf,u16 inbuf_len,u8 *outbuf,u8 *hold_reg)
 					err_code = AT_CommandDeviceBoxID(cmd_id,inbuf,inbuf_len,respbuf);
 				break;
 
+				case ACTIONINTERVAL:
+					err_code = AT_CommandActionINCL(cmd_id,inbuf,inbuf_len,respbuf);
+				break;
+				
 				default:
 
 				break;
@@ -505,7 +516,53 @@ u8 AT_CommandDeviceBoxID(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 	return ret;
 }
 
+//获取/设置传感器数据上传间隔
+u8 AT_CommandActionINCL(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
+{
+	u8 ret = 1;
+	u8 content_str[6];
+	u16 content_int;
+	u8 content_str_len = 0;
 
+	if(inbuf_len == AT_CommandBuf[cmd_id].len + 3 + 2)
+	{
+		sprintf((char *)respbuf, "action incl: %d\r\n",RelayActionINCL);
+		ret = 0;
+	}
+	else if(inbuf_len <= AT_CommandBuf[cmd_id].len + 3 + 6 + 2 && \
+		MyStrstr(inbuf, (u8 *)"=", inbuf_len, 1) != 0xFFFF)
+	{
+		memset(content_str,0,6);
+
+		if(get_str1(inbuf, "=", 1, "\r\n", 1, content_str))
+		{
+			content_str_len = strlen((char *)content_str);
+
+			if(content_str_len < 6)
+			{
+				content_int = StringToInt(content_str);
+
+				if(content_int < MAX_REALY_ACTION_INVL)
+				{
+					RelayActionINCL = content_int;
+
+					memset(content_str,0,6);
+
+					content_str[0] = (u8)(RelayActionINCL >> 8);
+					content_str[1] = (u8)(RelayActionINCL & 0x00FF);
+
+					memcpy(&HoldReg[REALY_ACTION_INVL_ADD],content_str,REALY_ACTION_INVL_LEN - 2);
+
+					WriteDataFromHoldBufToEeprom(&HoldReg[REALY_ACTION_INVL_ADD],REALY_ACTION_INVL_ADD, REALY_ACTION_INVL_LEN - 2);
+
+					ret = 0;
+				}
+			}
+		}
+	}
+
+	return ret;
+}
 
 
 

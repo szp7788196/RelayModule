@@ -33,7 +33,7 @@ void vTaskMAIN(void *pvParameters)
 			MirrorOutPutControlBitState = OutPutControlState;
 			HaveNewActionCommand = 0;
 
-			ControlAllRelay(MirrorOutPutControlBitState,&OutPutControlBit);
+			ControlAllRelayDelay(MirrorOutPutControlBitState,&OutPutControlBit,RelayActionINCL);
 		}
 
 		if(MirrorAllRelayState != AllRelayState)
