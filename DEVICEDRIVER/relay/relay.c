@@ -6,7 +6,7 @@
 void ControlAppointedRelay(u8 ch,u8 state)
 {
 	u32 RelayControlBit = 0;
-	
+
 #ifndef FORWARD
 	ch = CH_NUM  - ch;
 #endif
@@ -38,7 +38,7 @@ void ControlAllRelay(u16 out_put_control_bit,u16 *ch)
 	out_put_control_bit &= 0x0FFF;
 	relay_bit = out_put_control_bit;
 	relay_ch = *ch;
-	
+
 #ifndef FORWARD
 	for(i = 0; i < CH_NUM; i ++)
 	{
@@ -50,7 +50,7 @@ void ControlAllRelay(u16 out_put_control_bit,u16 *ch)
 		{
 			relay_bit &= ~(1 << i);
 		}
-		
+
 		if(*ch & (1 << (CH_NUM - 1 - i)))
 		{
 			relay_ch |= (1 << i);
@@ -60,7 +60,7 @@ void ControlAllRelay(u16 out_put_control_bit,u16 *ch)
 			relay_ch &= ~(1 << i);
 		}
 	}
-#endif	
+#endif
 
 	for(i = 0; i < 12; i ++)
 	{
@@ -98,7 +98,7 @@ void ControlAllRelayDelay(u16 out_put_control_bit,u16 *ch,u16 ms)
 	out_put_control_bit &= 0x0FFF;
 	relay_bit = out_put_control_bit;
 	relay_ch = *ch;
-	
+
 #ifndef FORWARD
 	for(i = 0; i < CH_NUM; i ++)
 	{
@@ -110,7 +110,7 @@ void ControlAllRelayDelay(u16 out_put_control_bit,u16 *ch,u16 ms)
 		{
 			relay_bit &= ~(1 << i);
 		}
-		
+
 		if(*ch & (1 << (CH_NUM - 1 - i)))
 		{
 			relay_ch |= (1 << i);
@@ -120,7 +120,7 @@ void ControlAllRelayDelay(u16 out_put_control_bit,u16 *ch,u16 ms)
 			relay_ch &= ~(1 << i);
 		}
 	}
-#endif	
+#endif
 
 	for(i = 0; i < 12; i ++)
 	{
@@ -150,7 +150,7 @@ void ControlAllRelayDelay(u16 out_put_control_bit,u16 *ch,u16 ms)
 					RelayControlBit |=  (1 << (i * 2 + 0));
 				}
 			}
-			
+
 			if(ms >= 10)
 			{
 				delay_ms(ms - 10);
@@ -159,7 +159,7 @@ void ControlAllRelayDelay(u16 out_put_control_bit,u16 *ch,u16 ms)
 	}
 
 	*ch = 0;
-	
+
 	TPIC6C595WriteOneByte(RelayControlBit);
 
 	delay_ms(10);

@@ -31,6 +31,7 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_typ
 u16 SetDeviceWorkMode(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 SetDeviceUUID(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 SetRelayActionINCL(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type);
+u16 SetRS485BuarRate(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type);
 
 
 

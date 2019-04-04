@@ -125,6 +125,10 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 						case 0xD8:									//设置定时发送间隔,下行
 							ret = SetRelayActionINCL(cmd_code,data,data_len,outbuf,response,uuid_type);
 						break;
+						
+						case 0xD9:									//设置定时发送间隔,下行
+							ret = SetRS485BuarRate(cmd_code,data,data_len,outbuf,response,uuid_type);
+						break;
 
 						case 0x80:									//应答，下行,上行在别处处理
 							UnPackAckPacket(cmd_code,data,data_len);
@@ -580,6 +584,46 @@ u16 SetRelayActionINCL(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 
 			memcpy(&HoldReg[REALY_ACTION_INVL_ADD],buf,2);
 			WriteDataFromHoldBufToEeprom(&HoldReg[REALY_ACTION_INVL_ADD],REALY_ACTION_INVL_ADD, REALY_ACTION_INVL_LEN - 2);
+		}
+		else
+		{
+			data_buf[1] = 1;
+		}
+	}
+	else
+	{
+		data_buf[1] = 2;
+	}
+
+	if(resp == 1)
+	{
+		out_len = PackAckPacket(cmd_code,data_buf,outbuf,id_type);
+	}
+
+	return out_len;
+}
+
+//设置继电器动作间隔
+u16 SetRS485BuarRate(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+{
+	u8 out_len = 0;
+	u8 data_buf[2] = {0,0};
+	u32 baud_rate = 9600;
+
+	data_buf[0] = cmd_code;
+
+	if(len == 4)												//数据长度必须是64
+	{
+		baud_rate = ((u32)(*(buf + 0)) << 24) + ((u32)(*(buf + 1)) << 16) + ((u32)(*(buf + 2)) << 8) + (u32)(*(buf + 3));
+
+		if(baud_rate <= 19200)
+		{
+			RS485BuadRate = baud_rate;
+
+			memcpy(&HoldReg[RS485_BUAD_RATE_ADD],buf,4);
+			WriteDataFromHoldBufToEeprom(&HoldReg[RS485_BUAD_RATE_ADD],RS485_BUAD_RATE_ADD, RS485_BUAD_RATE_LEN - 2);
+			
+			USART2_Init(RS485BuadRate);
 		}
 		else
 		{

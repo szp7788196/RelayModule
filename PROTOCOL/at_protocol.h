@@ -15,6 +15,7 @@
 #define AREA			6
 #define BOX				7
 #define ACTIONINTERVAL	8
+#define BUADRATE		9
 
 
 typedef struct AT_Command
@@ -53,6 +54,7 @@ u8 AT_CommandRELAY(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf);
 u8 AT_CommandDeviceAreaID(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf);
 u8 AT_CommandDeviceBoxID(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf);
 u8 AT_CommandActionINCL(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf);
+u8 AT_CommandRS485BuarRate(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf);
 
 
 

@@ -98,6 +98,9 @@
 #define REALY_ACTION_INVL_ADD		266			//继电器动作间隔时间存储地址
 #define REALY_ACTION_INVL_LEN		4
 
+#define RS485_BUAD_RATE_ADD			270			//继电器动作间隔时间存储地址
+#define RS485_BUAD_RATE_LEN			6
+
 #define OTA_INFO_ADD				301			//OTA信息存储地址
 #define OTA_INFO_LEN				9
 
@@ -265,6 +268,7 @@ static u8 auchCRCLo[] =
 };
 
 extern SemaphoreHandle_t  xMutex_IIC1;			//IIC1的互斥量
+extern QueueHandle_t xQueue_key;				//用于按键时间的消息队列
 
 
 extern u8 HoldReg[HOLD_REG_LEN];
@@ -306,7 +310,8 @@ extern u8 DeviceBoxID;					//设备物理区码
 extern u16 UpLoadINCL;					//数据上传时间间隔0~65535秒
 extern u8 GetTimeOK;					//成功获取时间标志
 extern u8 DeviceWorkMode;				//运行模式，0：自动，1：手动
-extern u16 RelayActionINCL;			//数据上传时间间隔0~65535毫秒
+extern u16 RelayActionINCL;				//数据上传时间间隔0~65535毫秒
+extern u32 RS485BuadRate;				//通讯波特率
 
 extern u8 NeedToReset;					//复位/重启标志
 
@@ -362,6 +367,7 @@ u8 ReadDeviceAreaID(void);
 u8 ReadDeviceBoxID(void);
 u8 ReadUpLoadINVL(void);
 u8 ReadRelayActionINCL(void);
+u8 ReadRS485BuadRate(void);
 
 
 u8 ReadSoftWareVersion(void);

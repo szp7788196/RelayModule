@@ -4,6 +4,7 @@
 #include "usart.h"
 #include "relay.h"
 #include "input.h"
+#include "task_key.h"
 
 
 TaskHandle_t xHandleTaskMAIN = NULL;
@@ -14,7 +15,11 @@ u16 MirrorAllRelayState = 0;
 
 void vTaskMAIN(void *pvParameters)
 {
+	BaseType_t xResult;
 	time_t times_sec = 0;
+	u8 key_state = 0;
+	
+	USART2_Init(RS485BuadRate);
 	
 	while(1)
 	{
@@ -25,6 +30,19 @@ void vTaskMAIN(void *pvParameters)
 				times_sec = GetSysTick1s();
 
 				AutoLoopRegularTimeGroups();
+			}
+		}
+		
+		xResult = xQueueReceive(xQueue_key,
+							(void *)&key_state,
+							(TickType_t)pdMS_TO_TICKS(1));
+		if(xResult == pdPASS)
+		{
+			if(key_state == TRIPLE_CLICK)
+			{
+				OutPutControlState = 0x0000;
+				OutPutControlBit = 0x0FFF;
+				HaveNewActionCommand = 1;
 			}
 		}
 		

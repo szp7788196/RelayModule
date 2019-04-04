@@ -35,7 +35,7 @@ u8 KEY_Scan(u8 mode)
 	}
 	if(key_up && (KEY1 == 0))
 	{
-		delay_ms(5);
+		delay_ms(20);
 
 		key_up=0;
 

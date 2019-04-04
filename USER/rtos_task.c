@@ -4,6 +4,7 @@
 #include "task_hci.h"
 #include "task_sensor.h"
 #include "task_main.h"
+#include "task_key.h"
 
 /*********************************************************************************************************
 *	函 数 名: AppObjCreate
@@ -16,6 +17,13 @@ void AppObjCreate(void)
 	//创建互斥量
 	xMutex_IIC1 = xSemaphoreCreateMutex();
 	if(xMutex_IIC1 == NULL)
+    {
+        /* 没有创建成功，用户可以在这里加入创建失败的处理机制 */
+    }
+	
+	//创建消息队列
+	xQueue_key = xQueueCreate(5, sizeof(u8));
+    if( xQueue_key == 0 )
     {
         /* 没有创建成功，用户可以在这里加入创建失败的处理机制 */
     }
@@ -36,19 +44,26 @@ void AppTaskCreate(void)
 				3,
 				&xHandleTaskLED);		//指示灯任务
 	
-	xTaskCreate(vTaskHCI,
-				"vTaskHCI",
-				512,
-				NULL,
-				4,
-				&xHandleTaskHCI);		//人机交互任务
-	
 	xTaskCreate(vTaskSENSOR,
 				"vTaskSENSOR",
 				128,
 				NULL,
-				5,
+				4,
 				&xHandleTaskSENSOR);	//传感器采集任务
+	
+	xTaskCreate(vTaskKEY,
+				"vTaskKEY",
+				64,
+				NULL,
+				5,
+				&xHandleTaskKEY);		//人机交互任务
+	
+	xTaskCreate(vTaskHCI,
+				"vTaskHCI",
+				512,
+				NULL,
+				6,
+				&xHandleTaskHCI);		//人机交互任务
 	
 	xTaskCreate(vTaskMAIN,
 				"vTaskMAIN",

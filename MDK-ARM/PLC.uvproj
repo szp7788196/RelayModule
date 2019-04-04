@@ -432,6 +432,11 @@
               <FileType>1</FileType>
               <FilePath>..\USER\task_sensor.c</FilePath>
             </File>
+            <File>
+              <FileName>task_key.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\task_key.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

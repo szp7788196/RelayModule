@@ -25,7 +25,7 @@ int main(void)
 	LED_Init();
 	TIM2_Init(99,7199);
 	USART1_Init(115200);
-	USART2_Init(9600);
+//	USART2_Init(9600);
 	TPIC6C595_Init();
 	INPUT_Init();
 

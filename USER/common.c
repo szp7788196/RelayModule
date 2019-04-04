@@ -11,6 +11,8 @@ RegularTime_S RegularTimeStruct[MAX_GROUP_NUM];	//时间策略结构体数组
 /****************************互斥量相关******************************/
 SemaphoreHandle_t  xMutex_IIC1 			= NULL;	//IIC总线1的互斥量
 
+QueueHandle_t xQueue_key 				= NULL;	//用于按键时间的消息队列
+
 /***************************固件升级相关*****************************/
 u8 NeedUpDateFirmWare = 0;			//有新固件需要加载
 u8 HaveNewFirmWare = 0;				//0xAA有新固件 others无新固件
@@ -41,6 +43,7 @@ u16 UpLoadINCL = 10;				//数据上传时间间隔0~65535秒
 u8 GetTimeOK = 0;					//成功获取时间标志
 u8 DeviceWorkMode = 0;				//运行模式，0：自动，1：手动
 u16 RelayActionINCL = 10;			//数据上传时间间隔0~65535毫秒
+u32 RS485BuadRate = 9600;			//通讯波特率
 
 /***************************其他*****************************/
 u8 NeedToReset = 0;					//复位/重启标志
@@ -735,6 +738,29 @@ u8 ReadRelayActionINCL(void)
 	return ret;
 }
 
+//读取通讯波特率
+u8 ReadRS485BuadRate(void)
+{
+	u8 ret = 0;
+
+	ret = ReadDataFromEepromToHoldBuf(HoldReg,RS485_BUAD_RATE_ADD, RS485_BUAD_RATE_LEN);
+
+	if(ret)
+	{
+		RS485BuadRate = (((u32)HoldReg[RS485_BUAD_RATE_ADD + 0]) << 24) + 
+						(((u32)HoldReg[RS485_BUAD_RATE_ADD + 1]) << 16) + 
+						(((u32)HoldReg[RS485_BUAD_RATE_ADD + 2]) << 8) + 
+						(u32)HoldReg[RS485_BUAD_RATE_ADD +3];
+
+		if(RS485BuadRate > 115200 || RS485BuadRate < 1200)
+		{
+			RS485BuadRate = 9600;
+		}
+	}
+
+	return ret;
+}
+
 //读取时间策略组数
 u8 ReadTimeGroupNumber(void)
 {
@@ -757,7 +783,7 @@ u8 ReadTimeGroupNumber(void)
 	return ret;
 }
 
-//读取数据上传间隔时间
+//读取继电器状态
 u8 ReadAllRelayState(void)
 {
 	u8 ret = 0;
@@ -920,6 +946,7 @@ void ReadParametersFromEEPROM(void)
 	ReadDeviceBoxID();
 	ReadUpLoadINVL();
 	ReadRelayActionINCL();
+	ReadRS485BuadRate();
 	ReadAllRelayState();
 	ReadRegularTimeGroups();
 }
