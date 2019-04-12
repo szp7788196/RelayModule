@@ -443,6 +443,8 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_typ
 
 		if(group_num <= MAX_GROUP_NUM)	//组数必须是2的倍数，并且要小于MAX_GROUP_NUM
 		{
+			RemoveAllStrategy();				//删除所有本地存储策略
+			
 			TimeGroupNumber = group_num;
 
 			crc16 = CRC16(&group_num,1);
@@ -468,16 +470,43 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_typ
 
 			for(i = 0; i < group_num; i ++)
 			{
-				RegularTimeStruct[i].type 			= time_group[i * TIME_RULE_LEN + 0];
+				pRegularTime tmp_time = NULL;
+				
+				tmp_time = (pRegularTime)mymalloc(sizeof(RegularTime_S));
 
-				RegularTimeStruct[i].year 			= time_group[i * TIME_RULE_LEN + 1];
-				RegularTimeStruct[i].month 			= time_group[i * TIME_RULE_LEN + 2];
-				RegularTimeStruct[i].date 			= time_group[i * TIME_RULE_LEN + 3];
-				RegularTimeStruct[i].hour 			= time_group[i * TIME_RULE_LEN + 4];
-				RegularTimeStruct[i].minute 		= time_group[i * TIME_RULE_LEN + 5];
-
-				RegularTimeStruct[i].control_bit	= (((u16)time_group[i * TIME_RULE_LEN + 6]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 7];
-				RegularTimeStruct[i].control_state	= (((u16)time_group[i * TIME_RULE_LEN + 8]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 9];
+				tmp_time->prev = NULL;
+				tmp_time->next = NULL;
+				
+				tmp_time->number 		= i;
+				tmp_time->type 			= time_group[i * TIME_RULE_LEN + 0];
+				tmp_time->year 			= time_group[i * TIME_RULE_LEN + 1];
+				tmp_time->month 		= time_group[i * TIME_RULE_LEN + 2];
+				tmp_time->date 			= time_group[i * TIME_RULE_LEN + 3];
+				tmp_time->hour 			= time_group[i * TIME_RULE_LEN + 4];
+				tmp_time->minute 		= time_group[i * TIME_RULE_LEN + 5];
+				tmp_time->control_bit	= (((u16)time_group[i * TIME_RULE_LEN + 6]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 7];
+				tmp_time->control_state	= (((u16)time_group[i * TIME_RULE_LEN + 8]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 9];
+				
+				
+				switch(tmp_time->type)
+				{
+					case TYPE_WEEKDAY:
+						RegularTimeGroupAdd(TYPE_WEEKDAY,tmp_time);
+					break;
+					
+					case TYPE_WEEKEND:
+						RegularTimeGroupAdd(TYPE_WEEKEND,tmp_time);
+					break;
+					
+					case TYPE_HOLIDAY:
+						RegularTimeGroupAdd(TYPE_HOLIDAY,tmp_time);
+					break;
+					
+					default:
+						
+					break;
+				}
+				
 			}
 
 			for(i = 0; i < group_num * TIME_RULE_LEN + group_num; i ++)				//每组7个字节+2个字节(CRC16)

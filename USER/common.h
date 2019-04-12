@@ -57,7 +57,7 @@
 #define MAX_FW_LAST_BAG_NUM			134
 
 
-#define MAX_GROUP_NUM				18		//(256 - 11 - 6 - 36) / 11
+#define MAX_GROUP_NUM				50		//(256 - 11 - 6 - 36) / 11
 #define HOLD_REG_LEN				512
 #define TIME_BUF_LEN				256
 
@@ -124,6 +124,7 @@
 typedef struct RegularTime *pRegularTime;
 struct RegularTime
 {
+	u8 number;
 	u8 type;			//策略类别Bit0:1 工作日 Bit1:1 周末 Bit2:1节日
 
 	u8 year;
@@ -135,8 +136,8 @@ struct RegularTime
 	u16 control_bit;	//位指定字节
 	u16 control_state;	//状态指定字节
 
-	RegularTime_S *prev;
-	RegularTime_S *next;
+	pRegularTime prev;
+	pRegularTime next;
 };
 
 static const uint32_t crc32tab[] =
@@ -268,13 +269,17 @@ static u8 auchCRCLo[] =
 };
 
 extern SemaphoreHandle_t  xMutex_IIC1;			//IIC1的互斥量
+extern SemaphoreHandle_t  xMutex_STRATEGY;		//AT指令的互斥量
+
 extern QueueHandle_t xQueue_key;				//用于按键时间的消息队列
 
 
 extern u8 HoldReg[HOLD_REG_LEN];
 extern u8 RegularTimeGroups[TIME_BUF_LEN];
 extern u8 TimeGroupNumber;
-extern RegularTime_S RegularTimeStruct[MAX_GROUP_NUM];
+extern pRegularTime RegularTimeWeekDay;			//工作日策略
+extern pRegularTime RegularTimeWeekEnd;			//周末策略
+extern pRegularTime RegularTimeHoliday;			//节假日策略
 
 /***************************固件升级相关*****************************/
 extern u8 NeedUpDateFirmWare;			//有新固件需要加载
@@ -386,7 +391,9 @@ void ReadParametersFromEEPROM(void);
 u16 PackDataOfRelayInfo(u8 *outbuf);
 u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf,u8 id_type);
 
-
+u8 RegularTimeGroupAdd(u8 type,pRegularTime group_time);
+u8 RegularTimeGroupSub(u8 number);
+void RemoveAllStrategy(void);
 
 
 

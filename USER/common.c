@@ -5,11 +5,14 @@
 u8 HoldReg[HOLD_REG_LEN];						//保持寄存器
 u8 RegularTimeGroups[TIME_BUF_LEN];				//时间策略缓存
 u8 TimeGroupNumber = 0;							//时间策略组数
-RegularTime_S RegularTimeStruct[MAX_GROUP_NUM];	//时间策略结构体数组
+pRegularTime RegularTimeWeekDay = NULL;			//工作日策略
+pRegularTime RegularTimeWeekEnd = NULL;			//周末策略
+pRegularTime RegularTimeHoliday = NULL;			//节假日策略
 
 
 /****************************互斥量相关******************************/
 SemaphoreHandle_t  xMutex_IIC1 			= NULL;	//IIC总线1的互斥量
+SemaphoreHandle_t  xMutex_STRATEGY 		= NULL;	//AT指令的互斥量
 
 QueueHandle_t xQueue_key 				= NULL;	//用于按键时间的消息队列
 
@@ -42,7 +45,7 @@ u8 DeviceBoxID = 0xFF;				//设备物理区码
 u16 UpLoadINCL = 10;				//数据上传时间间隔0~65535秒
 u8 GetTimeOK = 0;					//成功获取时间标志
 u8 DeviceWorkMode = 0;				//运行模式，0：自动，1：手动
-u16 RelayActionINCL = 10;			//数据上传时间间隔0~65535毫秒
+u16 RelayActionINCL = 20;			//数据上传时间间隔0~65535毫秒
 u32 RS485BuadRate = 9600;			//通讯波特率
 
 /***************************其他*****************************/
@@ -887,46 +890,82 @@ u8 ReadRegularTimeGroups(void)
 	u16 j = 0;
 	u16 read_crc = 0;
 	u16 cal_crc = 0;
-	u8 time_group[256];
+	u8 time_group[1024];
 	u8 read_success_buf_flag[MAX_GROUP_NUM];
+	
+	RegularTimeWeekDay = (pRegularTime)mymalloc(sizeof(RegularTime_S));
+	RegularTimeWeekEnd = (pRegularTime)mymalloc(sizeof(RegularTime_S));
+	RegularTimeHoliday = (pRegularTime)mymalloc(sizeof(RegularTime_S));
+	
+	RegularTimeWeekDay->number = 0xFF;
+	RegularTimeWeekEnd->number = 0xFF;
+	RegularTimeHoliday->number = 0xFF;
+	
+	RegularTimeWeekDay->prev = NULL;
+	RegularTimeWeekEnd->prev = NULL;
+	RegularTimeHoliday->prev = NULL;
+	
+	RegularTimeWeekDay->next = NULL;
+	RegularTimeWeekEnd->next = NULL;
+	RegularTimeHoliday->next = NULL;
 
-	ReadTimeGroupNumber();		//读取时间策略条数
+	memset(time_group,0,1024);
+	memset(read_success_buf_flag,0,MAX_GROUP_NUM);
 
-	if(TimeGroupNumber != 0)
+	for(i = 0; i < MAX_GROUP_NUM; i ++)
 	{
-		memset(time_group,0,256);
-		memset(read_success_buf_flag,0,MAX_GROUP_NUM);
-
-		for(i = 0; i < TimeGroupNumber; i ++)
+		for(j = i * TIME_RULE_LEN; j < i * TIME_RULE_LEN + TIME_RULE_LEN; j ++)
 		{
-			for(j = i * TIME_RULE_LEN; j < i * TIME_RULE_LEN + TIME_RULE_LEN; j ++)
-			{
-				time_group[j] = AT24CXX_ReadOneByte(TIME_RULE_ADD + j);
-			}
-
-			cal_crc = CRC16(&time_group[j - TIME_RULE_LEN],10);
-			read_crc = (((u16)time_group[j - 2]) << 8) + (u16)time_group[j - 1];
-
-			if(cal_crc == read_crc)
-			{
-				read_success_buf_flag[i] = 1;
-			}
+			time_group[j] = AT24CXX_ReadOneByte(TIME_RULE_ADD + j);
 		}
 
-		for(i = 0; i < TimeGroupNumber; i ++)
+		cal_crc = CRC16(&time_group[j - TIME_RULE_LEN],7);
+		read_crc = (((u16)time_group[j - 2]) << 8) + (u16)time_group[j - 1];
+
+		if(cal_crc == read_crc)
 		{
-			if(read_success_buf_flag[i] == 1)
+			read_success_buf_flag[i] = 1;
+		}
+	}
+	
+	for(i = 0; i < MAX_GROUP_NUM; i ++)
+	{
+		if(read_success_buf_flag[i] == 1)
+		{
+			pRegularTime tmp_time = NULL;
+
+			tmp_time = (pRegularTime)mymalloc(sizeof(RegularTime_S));
+			
+			tmp_time->prev = NULL;
+			tmp_time->next = NULL;
+
+			tmp_time->number		= i;
+			tmp_time->type 			= time_group[i * TIME_RULE_LEN + 0];
+			tmp_time->year 			= time_group[i * TIME_RULE_LEN + 1];
+			tmp_time->month 		= time_group[i * TIME_RULE_LEN + 2];
+			tmp_time->date 			= time_group[i * TIME_RULE_LEN + 3];
+			tmp_time->hour 			= time_group[i * TIME_RULE_LEN + 4];
+			tmp_time->minute 		= time_group[i * TIME_RULE_LEN + 5];
+			tmp_time->control_bit	= (((u16)time_group[i * TIME_RULE_LEN + 6]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 7];
+			tmp_time->control_state	= (((u16)time_group[i * TIME_RULE_LEN + 8]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 9];
+
+			switch(tmp_time->type)
 			{
-				RegularTimeStruct[i].type 			= time_group[i * TIME_RULE_LEN + 0];
+				case TYPE_WEEKDAY:
+					RegularTimeGroupAdd(TYPE_WEEKDAY,tmp_time);
+				break;
 
-				RegularTimeStruct[i].year 			= time_group[i * TIME_RULE_LEN + 1];
-				RegularTimeStruct[i].month 			= time_group[i * TIME_RULE_LEN + 2];
-				RegularTimeStruct[i].date 			= time_group[i * TIME_RULE_LEN + 3];
-				RegularTimeStruct[i].hour 			= time_group[i * TIME_RULE_LEN + 4];
-				RegularTimeStruct[i].minute 		= time_group[i * TIME_RULE_LEN + 5];
+				case TYPE_WEEKEND:
+					RegularTimeGroupAdd(TYPE_WEEKEND,tmp_time);
+				break;
 
-				RegularTimeStruct[i].control_bit	= (((u16)time_group[i * TIME_RULE_LEN + 6]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 7];
-				RegularTimeStruct[i].control_state	= (((u16)time_group[i * TIME_RULE_LEN + 8]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 9];
+				case TYPE_HOLIDAY:
+					RegularTimeGroupAdd(TYPE_HOLIDAY,tmp_time);
+				break;
+
+				default:
+
+				break;
 			}
 		}
 	}
@@ -1030,7 +1069,177 @@ u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf,u8 id_type)
 	return len;
 }
 
+u8 RegularTimeGroupAdd(u8 type,pRegularTime group_time)
+{
+	u8 ret = 1;
+	pRegularTime tmp_time = NULL;
+	pRegularTime main_time = NULL;
 
+	if(xSchedulerRunning == 1)
+	{
+		xSemaphoreTake(xMutex_STRATEGY, portMAX_DELAY);
+	}
+	
+	switch(type)
+	{
+		case TYPE_WEEKDAY:
+			main_time = RegularTimeWeekDay;
+		break;
+
+		case TYPE_WEEKEND:
+			main_time = RegularTimeWeekEnd;
+		break;
+
+		case TYPE_HOLIDAY:
+			main_time = RegularTimeHoliday;
+		break;
+
+		default:
+
+		break;
+	}
+	
+	if(main_time != NULL)
+	{
+		for(tmp_time = main_time; tmp_time != NULL; tmp_time = tmp_time->next)
+		{
+			if(group_time->number == tmp_time->number && tmp_time->number != 0xFF)
+			{
+				if(tmp_time->next != NULL)
+				{
+					tmp_time->prev->next = group_time;
+					tmp_time->prev->next->next = tmp_time->next;
+					tmp_time->next->prev = group_time;
+					tmp_time->next->prev->prev = tmp_time->prev;
+					
+					myfree(tmp_time);
+				}
+				else
+				{
+					tmp_time->prev->next = group_time;
+					tmp_time->prev->next->prev = tmp_time->prev;
+					
+					myfree(tmp_time);
+				}
+				
+				break;
+			}
+			else if(tmp_time->next == NULL)
+			{
+				tmp_time->next = group_time;
+				tmp_time->next->prev = tmp_time;
+				
+				break;
+			}
+		}
+	}
+	
+	if(xSchedulerRunning == 1)
+	{
+		xSemaphoreGive(xMutex_STRATEGY);
+	}
+	
+	return ret;
+}
+
+u8 RegularTimeGroupSub(u8 number)
+{
+	u8 ret = 0;
+	pRegularTime tmp_time = NULL;
+
+	if(xSchedulerRunning == 1)
+	{
+		xSemaphoreTake(xMutex_STRATEGY, portMAX_DELAY);
+	}
+	
+	if(RegularTimeWeekDay != NULL || RegularTimeWeekDay->next != NULL)
+	{
+		for(tmp_time = RegularTimeWeekDay->next; tmp_time != NULL; tmp_time = tmp_time->next)
+		{
+			if(tmp_time->number == number)
+			{
+				if(tmp_time->next != NULL)
+				{
+					tmp_time->prev->next = tmp_time->next;
+					tmp_time->next->prev = tmp_time->prev;
+				}
+				else
+				{
+					tmp_time->prev->next = NULL;
+				}
+				
+				myfree(tmp_time);
+				
+				ret = 1;
+			}
+		}
+	}
+
+	if(RegularTimeWeekEnd != NULL || RegularTimeWeekEnd->next != NULL)
+	{
+		for(tmp_time = RegularTimeWeekEnd->next; tmp_time != NULL; tmp_time = tmp_time->next)
+		{
+			if(tmp_time->number == number)
+			{
+				if(tmp_time->next != NULL)
+				{
+					tmp_time->prev->next = tmp_time->next;
+					tmp_time->next->prev = tmp_time->prev;
+				}
+				else
+				{
+					tmp_time->prev->next = NULL;
+				}
+				
+				myfree(tmp_time);
+				
+				ret = 1;
+			}
+		}
+	}
+
+	if(RegularTimeHoliday != NULL || RegularTimeHoliday->next != NULL)
+	{
+		for(tmp_time = RegularTimeHoliday->next; tmp_time != NULL; tmp_time = tmp_time->next)
+		{
+			if(tmp_time->number == number)
+			{
+				if(tmp_time->next != NULL)
+				{
+					tmp_time->prev->next = tmp_time->next;
+					tmp_time->next->prev = tmp_time->prev;
+				}
+				else
+				{
+					tmp_time->prev->next = NULL;
+				}
+				
+				myfree(tmp_time);
+
+				ret = 1;
+			}
+		}
+	}
+	
+	if(xSchedulerRunning == 1)
+	{
+		xSemaphoreGive(xMutex_STRATEGY);
+	}
+	
+	return ret;
+}
+
+void RemoveAllStrategy(void)
+{
+	u16 i = 0;
+	
+	for(i = 0; i < MAX_GROUP_NUM; i ++)
+	{
+		RegularTimeGroupSub(i);
+		
+		AT24CXX_WriteLenByte(TIME_RULE_ADD + TIME_RULE_LEN * i + 7,0x0000,2);
+	}
+}
 
 
 
