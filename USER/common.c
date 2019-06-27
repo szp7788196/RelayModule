@@ -1,5 +1,6 @@
 #include "common.h"
 #include "24cxx.h"
+#include "relay.h"
 
 
 u8 HoldReg[HOLD_REG_LEN];						//保持寄存器
@@ -8,6 +9,7 @@ u8 TimeGroupNumber = 0;							//时间策略组数
 pRegularTime RegularTimeWeekDay = NULL;			//工作日策略
 pRegularTime RegularTimeWeekEnd = NULL;			//周末策略
 pRegularTime RegularTimeHoliday = NULL;			//节假日策略
+HolodayRange_S HolodayRange;					//节假日起始日期
 
 
 /****************************互斥量相关******************************/
@@ -45,13 +47,14 @@ u8 DeviceBoxID = 0xFF;				//设备物理区码
 u16 UpLoadINCL = 10;				//数据上传时间间隔0~65535秒
 u8 GetTimeOK = 0;					//成功获取时间标志
 u8 DeviceWorkMode = 0;				//运行模式，0：自动，1：手动
-u16 RelayActionINCL = 20;			//数据上传时间间隔0~65535毫秒
+u16 RelayActionINCL = 100;			//数据上传时间间隔0~65535毫秒
 u32 RS485BuadRate = 9600;			//通讯波特率
 
 /***************************其他*****************************/
 u8 NeedToReset = 0;					//复位/重启标志
 u16 OutPutControlBit = 0;			//开出位标志
 u16 OutPutControlState = 0;			//开出位标志(具体哪几位)
+u16 RelaysState = 0;				//各个继电器的状态
 u16 AllRelayPowerState = 0;			//继电器输入端是否带电
 u16 AllRelayState = 0;				//继电器的状态
 u8 HaveNewActionCommand = 0;		//有新的动作指令	
@@ -734,7 +737,7 @@ u8 ReadRelayActionINCL(void)
 
 		if(RelayActionINCL > MAX_REALY_ACTION_INVL)
 		{
-			RelayActionINCL = 10;
+			RelayActionINCL = 100;
 		}
 	}
 
@@ -919,7 +922,7 @@ u8 ReadRegularTimeGroups(void)
 			time_group[j] = AT24CXX_ReadOneByte(TIME_RULE_ADD + j);
 		}
 
-		cal_crc = CRC16(&time_group[j - TIME_RULE_LEN],7);
+		cal_crc = CRC16(&time_group[j - TIME_RULE_LEN],10);
 		read_crc = (((u16)time_group[j - 2]) << 8) + (u16)time_group[j - 1];
 
 		if(cal_crc == read_crc)
@@ -955,12 +958,12 @@ u8 ReadRegularTimeGroups(void)
 					RegularTimeGroupAdd(TYPE_WEEKDAY,tmp_time);
 				break;
 
-				case TYPE_WEEKEND:
-					RegularTimeGroupAdd(TYPE_WEEKEND,tmp_time);
+				case TYPE_HOLIDAY_START:
+					RegularTimeGroupAdd(TYPE_HOLIDAY_START,tmp_time);
 				break;
 
-				case TYPE_HOLIDAY:
-					RegularTimeGroupAdd(TYPE_HOLIDAY,tmp_time);
+				case TYPE_HOLIDAY_END:
+					RegularTimeGroupAdd(TYPE_HOLIDAY_END,tmp_time);
 				break;
 
 				default:
@@ -993,12 +996,43 @@ void ReadParametersFromEEPROM(void)
 //将继电器状态和时间打包
 u16 PackDataOfRelayInfo(u8 *outbuf)
 {
+	u8 i = 0;
 	u8 len = 0;
+//	u16 relays_stste = 0;
+	u16 relays_power_stste = 0;
 	
-	*(outbuf + 0) = (u8)(OutPutControlState >> 8);
-	*(outbuf + 1) = (u8)(OutPutControlState & 0x00FF);
-	*(outbuf + 2) = (u8)(AllRelayPowerState >> 8);
-	*(outbuf + 3) = (u8)(AllRelayPowerState & 0x00FF);
+#ifndef FORWARD
+	for(i = 0; i < CH_NUM; i ++)
+	{
+//		if(RelaysState & (1 << (CH_NUM - 1 - i)))
+//		{
+//			relays_stste |= (1 << i);
+//		}
+//		else
+//		{
+//			relays_stste &= ~(1 << i);
+//		}
+
+		if(AllRelayPowerState & (1 << (CH_NUM - 1 - i)))
+		{
+			relays_power_stste |= (1 << i);
+		}
+		else
+		{
+			relays_power_stste &= ~(1 << i);
+		}
+	}
+#endif
+	
+//	*(outbuf + 0) = (u8)(relays_stste >> 8);
+//	*(outbuf + 1) = (u8)(relays_stste & 0x00FF);
+//	*(outbuf + 2) = (u8)(relays_power_stste >> 8);
+//	*(outbuf + 3) = (u8)(relays_power_stste & 0x00FF);
+
+	*(outbuf + 0) = (u8)(RelaysState >> 8);
+	*(outbuf + 1) = (u8)(RelaysState & 0x00FF);
+	*(outbuf + 2) = (u8)(relays_power_stste >> 8);
+	*(outbuf + 3) = (u8)(relays_power_stste & 0x00FF);
 	
 	*(outbuf + 4) = calendar.hour;
 	*(outbuf + 5) = calendar.min;
@@ -1090,8 +1124,23 @@ u8 RegularTimeGroupAdd(u8 type,pRegularTime group_time)
 			main_time = RegularTimeWeekEnd;
 		break;
 
-		case TYPE_HOLIDAY:
+		case TYPE_HOLIDAY_START:
 			main_time = RegularTimeHoliday;
+			
+			HolodayRange.year_s  = group_time->year;
+			HolodayRange.month_s = group_time->month;
+			HolodayRange.date_s  = group_time->date;
+			HolodayRange.year_e  = group_time->year;
+			HolodayRange.month_e = group_time->month;
+			HolodayRange.date_e  = group_time->date;
+		break;
+
+		case TYPE_HOLIDAY_END:
+			main_time = RegularTimeHoliday;
+			
+			HolodayRange.year_e  = group_time->year;
+			HolodayRange.month_e = group_time->month;
+			HolodayRange.date_e  = group_time->date;
 		break;
 
 		default:

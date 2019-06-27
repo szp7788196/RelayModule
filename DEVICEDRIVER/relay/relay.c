@@ -7,18 +7,29 @@ void ControlAppointedRelay(u8 ch,u8 state)
 {
 	u32 RelayControlBit = 0;
 
-#ifndef FORWARD
-	ch = CH_NUM  - ch;
-#endif
+//#ifndef FORWARD
+//	ch = CH_NUM - ch - 1;
+//#endif
+//	if(state == 1)
+//	{
+//		RelayControlBit |=  (1 << (ch * 2 - 1));
+//		RelayControlBit &= ~(1 << (ch * 2 - 2));
+//	}
+//	else if(state == 0)
+//	{
+//		RelayControlBit &= ~(1 << (ch * 2 - 1));
+//		RelayControlBit |=  (1 << (ch * 2 - 2));
+//	}
+	
 	if(state == 1)
 	{
-		RelayControlBit |=  (1 << (ch * 2 - 1));
-		RelayControlBit &= ~(1 << (ch * 2 - 2));
+		RelayControlBit |=  (1 << (ch * 2 + 1));
+		RelayControlBit &= ~(1 << (ch * 2 + 0));
 	}
 	else if(state == 0)
 	{
-		RelayControlBit &= ~(1 << (ch * 2 - 1));
-		RelayControlBit |=  (1 << (ch * 2 - 2));
+		RelayControlBit &= ~(1 << (ch * 2 + 1));
+		RelayControlBit |=  (1 << (ch * 2 + 0));
 	}
 
 	TPIC6C595WriteOneByte(RelayControlBit);

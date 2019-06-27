@@ -3,6 +3,7 @@
 #include "usart.h"
 #include "24cxx.h"
 #include "common.h"
+#include "relay.h"
 
 //网络数据帧协议解析
 u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
@@ -201,6 +202,7 @@ u16 UpdateRelayModeInfo(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type
 //控制继电器开闭
 u16 ControlRelayState(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 {
+	u8 i = 0;
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
 	u16 bit = 0;
@@ -217,6 +219,21 @@ u16 ControlRelayState(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 		{
 			OutPutControlBit = bit;
 			OutPutControlState = state;
+			
+			for(i = 0; i < CH_NUM; i ++)
+			{
+				if(OutPutControlBit & (1 << i))
+				{
+					if(OutPutControlState & (1 << i))
+					{
+						RelaysState |= (1 << i);
+					}
+					else
+					{
+						RelaysState &= ~(1 << i);
+					}
+				}
+			}
 			
 			HaveNewActionCommand = 1;
 			
@@ -494,12 +511,12 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_typ
 						RegularTimeGroupAdd(TYPE_WEEKDAY,tmp_time);
 					break;
 					
-					case TYPE_WEEKEND:
-						RegularTimeGroupAdd(TYPE_WEEKEND,tmp_time);
+					case TYPE_HOLIDAY_START:
+						RegularTimeGroupAdd(TYPE_HOLIDAY_START,tmp_time);
 					break;
 					
-					case TYPE_HOLIDAY:
-						RegularTimeGroupAdd(TYPE_HOLIDAY,tmp_time);
+					case TYPE_HOLIDAY_END:
+						RegularTimeGroupAdd(TYPE_HOLIDAY_END,tmp_time);
 					break;
 					
 					default:

@@ -24,11 +24,11 @@ void vTaskLED(void *pvParameters)
 		
 		if(g_led_state)
 		{
-			GREEN_LED = 0;
+			GREEN_LED = 1;
 		}
 		else
 		{
-			GREEN_LED = 1;
+			GREEN_LED = 0;
 		}
 		
 		cnt = (cnt + 1) & 0xFFFFFFFF;

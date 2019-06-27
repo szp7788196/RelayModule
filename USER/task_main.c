@@ -18,9 +18,9 @@ void vTaskMAIN(void *pvParameters)
 	BaseType_t xResult;
 	time_t times_sec = 0;
 	u8 key_state = 0;
-	
+
 	USART2_Init(RS485BuadRate);
-	
+
 	while(1)
 	{
 		if(DeviceWorkMode == MODE_AUTO)					//只有在自动模式下才进行策略判断
@@ -32,7 +32,7 @@ void vTaskMAIN(void *pvParameters)
 				AutoLoopRegularTimeGroups();
 			}
 		}
-		
+
 		xResult = xQueueReceive(xQueue_key,
 							(void *)&key_state,
 							(TickType_t)pdMS_TO_TICKS(1));
@@ -45,7 +45,7 @@ void vTaskMAIN(void *pvParameters)
 				HaveNewActionCommand = 1;
 			}
 		}
-		
+
 		if(MirrorOutPutControlBitState != OutPutControlState || HaveNewActionCommand == 1)
 		{
 			MirrorOutPutControlBitState = OutPutControlState;
@@ -82,14 +82,14 @@ void AutoLoopRegularTimeGroups(void)
 	u16 gate2 = 0;
 	u16 gate24 = 1440;	//24*60;
 	u16 gate_n = 0;
-	
+
 	pRegularTime tmp_time = NULL;
 
 	if(GetTimeOK != 0)
 	{
 		xSemaphoreTake(xMutex_STRATEGY, portMAX_DELAY);
-		
-		if(calendar.week >= 1 && calendar.week <= 5)	//判断是否是工作日
+
+		if(calendar.week <= 6)	//判断是否是工作日
 		{
 			if(RegularTimeWeekDay->next != NULL)		//判断策略列表是否不为空
 			{
@@ -106,7 +106,7 @@ void AutoLoopRegularTimeGroups(void)
 					       tmp_time->next->minute == calendar.min)		//判断该条策略的next的时间是否与当前时间相同
 						{
 							tmp_time = tmp_time->next;
-							
+
 							ret = 1;
 						}
 						else
@@ -137,68 +137,13 @@ void AutoLoopRegularTimeGroups(void)
 					}
 					else
 					{
-						ret = 1;
-					}
-
-					if(ret == 1)
-					{
-						OutPutControlBit = tmp_time->control_bit;
-						OutPutControlState = tmp_time->control_state;
-
-						break;
-					}
-				}
-			}
-		}
-		else if(calendar.week >= 6 && calendar.week <= 7)
-		{
-			if(RegularTimeWeekEnd->next != NULL)
-			{
-				for(tmp_time = RegularTimeWeekEnd->next; tmp_time != NULL; tmp_time = tmp_time->next)
-				{
-					if(tmp_time->hour 	== calendar.hour &&
-					   tmp_time->minute == calendar.min)
-					{
-						ret = 1;
-					}
-					else if(tmp_time->next != NULL)
-					{
-						if(tmp_time->next->hour   == calendar.hour &&
-					       tmp_time->next->minute == calendar.min)
+						gate1 = tmp_time->hour * 60 + tmp_time->minute;					//该条策略的分钟数
+						gate_n = calendar.hour * 60 + calendar.min;						//当前时间的分钟数
+						
+						if(gate_n >= gate1)
 						{
-							tmp_time = tmp_time->next;
-							
 							ret = 1;
 						}
-						else
-						{
-							gate1 = tmp_time->hour * 60 + tmp_time->minute;
-							gate2 = tmp_time->next->hour * 60 + tmp_time->next->minute;
-							gate_n = calendar.hour * 60 + calendar.min;
-
-							if(gate1 < gate2)
-							{
-								if(gate1 <= gate_n && gate_n <= gate2)
-								{
-									ret = 1;
-								}
-							}
-							else if(gate1 > gate2)
-							{
-								if(gate1 <= gate_n && gate_n <= gate24)
-								{
-									ret = 1;
-								}
-								else if(gate0 <= gate_n && gate_n <= gate2)
-								{
-									ret = 1;
-								}
-							}
-						}
-					}
-					else
-					{
-						ret = 1;
 					}
 
 					if(ret == 1)
@@ -211,7 +156,7 @@ void AutoLoopRegularTimeGroups(void)
 				}
 			}
 		}
-		
+
 		if(RegularTimeHoliday->next != NULL)
 		{
 			for(tmp_time = RegularTimeHoliday->next; tmp_time != NULL; tmp_time = tmp_time->next)
@@ -230,7 +175,7 @@ void AutoLoopRegularTimeGroups(void)
 					   tmp_time->next->minute == calendar.min)
 					{
 						tmp_time = tmp_time->next;
-						
+
 						ret = 1;
 					}
 					else
@@ -261,7 +206,13 @@ void AutoLoopRegularTimeGroups(void)
 				}
 				else
 				{
-					ret = 1;
+					gate1 = tmp_time->hour * 60 + tmp_time->minute;					//该条策略的分钟数
+					gate_n = calendar.hour * 60 + calendar.min;						//当前时间的分钟数
+					
+					if(gate_n >= gate1)
+					{
+						ret = 1;
+					}
 				}
 
 				if(ret == 1)
@@ -273,7 +224,7 @@ void AutoLoopRegularTimeGroups(void)
 				}
 			}
 		}
-		
+
 		xSemaphoreGive(xMutex_STRATEGY);
 	}
 }
