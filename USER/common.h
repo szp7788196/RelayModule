@@ -121,6 +121,19 @@
 #define TIME_RULE_LEN				12
 
 
+#define HolodayRange_S struct HolodayRange
+typedef struct HolodayRange *pHolodayRange;
+struct HolodayRange
+{
+	u8 year_s;
+	u8 month_s;
+	u8 date_s;
+	
+	u8 year_e;
+	u8 month_e;
+	u8 date_e;
+};
+
 #define RegularTime_S struct RegularTime
 typedef struct RegularTime *pRegularTime;
 struct RegularTime
@@ -141,18 +154,6 @@ struct RegularTime
 	pRegularTime next;
 };
 
-#define HolodayRange_S struct HolodayRange
-typedef struct HolodayRange *pHolodayRange;
-struct HolodayRange
-{
-	u8 year_s;
-	u8 month_s;
-	u8 date_s;
-	
-	u8 year_e;
-	u8 month_e;
-	u8 date_e;
-};
 
 static const uint32_t crc32tab[] =
 {
