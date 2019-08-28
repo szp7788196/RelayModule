@@ -44,6 +44,24 @@
 
     typedef unsigned long long int  uint64;
     typedef long long int           int64;
+	
+
+#define FIRMWARE_FREE					0			//无需固件升级
+#define FIRMWARE_DOWNLOADING			1			//固件正在下载中
+#define FIRMWARE_DOWNLOAD_WAIT			2			//等待服务器下发固件
+#define FIRMWARE_DOWNLOADED				3			//固件下载完成
+#define FIRMWARE_DOWNLOAD_FAILED		4			//下载失败
+#define FIRMWARE_UPDATING				5			//正在升级
+#define FIRMWARE_UPDATE_SUCCESS			6			//升级成功
+#define FIRMWARE_UPDATE_FAILED			7			//升级失败
+#define FIRMWARE_ERASE_SUCCESS			8			//擦除FLASH成功
+#define FIRMWARE_ERASE_FAIL				9			//擦除FLASH成功
+#define FIRMWARE_ERASEING				10			//正在擦除FLASH
+#define FIRMWARE_BAG_SIZE				130			//128 + 2字节crc
+#define FIRMWARE_RUN_FLASH_BASE_ADD		0x08006000	//程序运行地址
+#define FIRMWARE_BUCKUP_FLASH_BASE_ADD	0x08043000	//程序备份地址
+#define FIRMWARE_MAX_FLASH_ADD			0x08080000	//FLSAH最大地址
+#define FIRMWARE_SIZE					FIRMWARE_BUCKUP_FLASH_BASE_ADD - FIRMWARE_RUN_FLASH_BASE_ADD
 
 
 #define SOFT_WARE_VRESION			101			//软件版本号
@@ -105,11 +123,11 @@
 #define OTA_INFO_ADD				301			//OTA信息存储地址
 #define OTA_INFO_LEN				9
 
-#define FIRM_WARE_FLAG_S_ADD		301			//新固件标识存储地址
-#define FIRM_WARE_STORE_ADD_S_ADD	302			//新固件Flash地址存储地址
-#define FIRM_WARE_VER_S_ADD			303			//新固件版本号存储地址
-#define FIRM_WARE_BAG_NUM_S_ADD		305			//新固件总包数存储地址
-#define LAST_BAG_BYTE_NUM_S_ADD		307			//新固件末包字节数存储地址
+#define SOFT_WARE_INFO_ADD			301		//固件信息
+#define SOFT_WARE_INFO_LEN			8
+
+#define UPDATE_STATE_ADD			309		//升级状态
+#define UPDATE_STATE_LEN			15
 
 #define TIME_GROUP_NUM_ADD			361			//策略组数存储地址
 #define TIME_GROUP_NUM_LEN			3
@@ -146,6 +164,8 @@ struct RegularTime
 	u8 date;
 	u8 hour;
 	u8 minute;
+	
+	HolodayRange_S range;
 
 	u16 control_bit;	//位指定字节
 	u16 control_state;	//状态指定字节
@@ -153,6 +173,23 @@ struct RegularTime
 	pRegularTime prev;
 	pRegularTime next;
 };
+
+typedef struct FrameWareInfo				//FTP升级固件信息
+{
+	u16 version;							//固件版本
+	u32 length;								//固件大小
+}FrameWareInfo_S;
+
+typedef struct FrameWareState				//固件升级状态信息
+{
+	u8 state;								//当前状态
+	u16 total_bags;							//总包数
+	u16 current_bag_cnt;					//当前下载的包数
+	u16 bag_size;							//每包大小
+	u16 last_bag_size;						//最末包大小
+	u32 total_size;							//固件大小
+	
+}FrameWareState_S;
 
 
 static const uint32_t crc32tab[] =
@@ -352,6 +389,9 @@ extern u16 AllRelayPowerState;			//继电器输入端是否带电
 extern u16 AllRelayState;				//继电器的状态
 extern u8 HaveNewActionCommand;			//有新的动作指令
 
+extern FrameWareInfo_S FrameWareInfo;				//固件信息
+extern FrameWareState_S FrameWareState;			//固件升级状态
+
 
 u16 MyStrstr(u8 *str1, u8 *str2, u16 str1_len, u16 str2_len);
 u8 GetDatBit(u32 dat);
@@ -363,9 +403,13 @@ int search_str(unsigned char *source, unsigned char *target);
 unsigned short get_str1(unsigned char *source, unsigned char *begin, unsigned short count1, unsigned char *end, unsigned short count2, unsigned char *out);
 unsigned short get_str2(unsigned char *source, unsigned char *begin, unsigned short count, unsigned short length, unsigned char *out);
 unsigned short get_str3(unsigned char *source, unsigned char *out, unsigned short length);
-u32 CRC32( const u8 *buf, u32 size);
+u32 CRC32(const u8 *buf, u32 size, u32 temp,u8 flag);
 u16 CRC16(u8 *puchMsgg,u8 usDataLen);
+u16 GetCRC16(u8 *data,u16 len);
 u8 CalCheckSum(u8 *buf, u16 len);
+
+u8 leap_year_judge(u16 year);
+u32 get_days_form_calendar(u16 year,u8 month,u8 date);
 
 void SysTick1msAdder(void);
 u32 GetSysTick1ms(void);
@@ -375,6 +419,8 @@ void SysTick100msAdder(void);
 u32 GetSysTick100ms(void);
 void SetSysTick1s(time_t sec);
 time_t GetSysTick1s(void);
+u8 STMFLASH_ReadByte(u32 faddr);
+void STMFLASH_ReadBytes(u32 ReadAddr,u8 *pBuffer,u16 NumToRead);
 
 
 u8 ReadDataFromEepromToHoldBuf(u8 *inbuf,u16 s_add, u16 len);
@@ -400,8 +446,10 @@ u8 ReadDeviceUUID(void);
 u8 ReadTimeGroupNumber(void);
 u8 ReadAllRelayState(void);
 u8 WriteAllRelayState(void);
-void WriteOTAInfo(u8 *hold_reg,u8 reset);
-u8 ReadOTAInfo(u8 *hold_reg);
+u8 ReadFrameWareInfo(void);
+void WriteFrameWareStateToEeprom(void);
+u8 ReadFrameWareState(void);
+
 u8 ReadRegularTimeGroups(void);
 void ReadParametersFromEEPROM(void);
 

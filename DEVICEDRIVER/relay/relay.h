@@ -6,7 +6,7 @@
 
 
 //#define FORWARD
-#define CH_NUM		12
+#define CH_NUM		4
 
 
 void ControlAppointedRelay(u8 ch,u8 state);

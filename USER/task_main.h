@@ -10,7 +10,7 @@ extern TaskHandle_t xHandleTaskMAIN;
 
 void vTaskMAIN(void *pvParameters);
 
-void AutoLoopRegularTimeGroups(void);
+void AutoLoopRegularTimeGroups(u16 *bit,u16 *state);
 
 
 

@@ -143,10 +143,10 @@ void USART1_IRQHandler(void)
 			Usart1RxBuf[Usart1RxCnt]=rxdata;
 			Usart1RxCnt++;
 
-			if(Usart1RxCnt == 8)
-			{
-				Usart1RxCnt = Usart1RxCnt;
-			}
+//			if(Usart1RxCnt == 8)
+//			{
+//				Usart1RxCnt = Usart1RxCnt;
+//			}
 		}
   	}
 

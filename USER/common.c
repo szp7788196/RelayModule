@@ -57,7 +57,11 @@ u16 OutPutControlState = 0;			//开出位标志(具体哪几位)
 u16 RelaysState = 0;				//各个继电器的状态
 u16 AllRelayPowerState = 0;			//继电器输入端是否带电
 u16 AllRelayState = 0;				//继电器的状态
-u8 HaveNewActionCommand = 0;		//有新的动作指令	
+u8 HaveNewActionCommand = 0;		//有新的动作指令
+
+/*************************固件升级相关***************************/
+FrameWareInfo_S FrameWareInfo;				//固件信息
+FrameWareState_S FrameWareState;			//固件升级状态
 
 //在str1中查找str2，失败返回0xFF,成功返回str2首个元素在str1中的位置
 u16 MyStrstr(u8 *str1, u8 *str2, u16 str1_len, u16 str2_len)
@@ -262,13 +266,26 @@ unsigned short get_str3(unsigned char *source, unsigned char *out, unsigned shor
 }
 
 //32位CRC校验
-u32 CRC32( const u8 *buf, u32 size)
+//CRC32
+u32 CRC32(const u8 *buf, u32 size, u32 temp,u8 flag)
 {
-     uint32_t i, crc;
-     crc = 0xFFFFFFFF;
-     for (i = 0; i < size; i++)
-      crc = crc32tab[(crc ^ buf[i]) & 0xff] ^ (crc >> 8);
-     return crc^0xFFFFFFFF;
+	uint32_t i, crc,crc_e;
+
+	crc = temp;
+	for (i = 0; i < size; i++)
+	{
+		crc = crc32tab[(crc ^ buf[i]) & 0xff] ^ (crc >> 8);
+	}
+
+	if(flag != 0)
+	{
+		crc_e = crc^0xFFFFFFFF;
+	}
+	else if(flag == 0)
+	{
+		crc_e = crc;
+	}
+	return crc_e;
 }
 
 /*****************************************************
@@ -291,6 +308,37 @@ u16 CRC16(u8 *puchMsgg,u8 usDataLen)
     return ((uchCRCHi << 8) | uchCRCLo);
 }
 
+u16 GetCRC16(u8 *data,u16 len)
+{
+	u16 ax,lsb;
+	u8 temp1 = 0;
+	u8 temp2 = 0;
+	int i,j;
+
+	ax = 0xFFFF;
+
+	for(i = 0; i < len; i ++)
+	{
+		ax ^= data[i];
+
+		for(j = 0; j < 8; j ++)
+		{
+			lsb = ax & 0x0001;
+			ax = ax >> 1;
+
+			if(lsb != 0)
+				ax ^= 0xA001;
+		}
+	}
+
+	temp1 = (u8)((ax >> 8) & 0x00FF);
+	temp2 = (u8)(ax & 0x00FF);
+
+	ax = ((((u16)temp2) << 8) & 0xFF00) + (u16)temp1;
+
+	return ax;
+}
+
 //计算校验和
 u8 CalCheckSum(u8 *buf, u16 len)
 {
@@ -303,6 +351,73 @@ u8 CalCheckSum(u8 *buf, u16 len)
 	}
 
 	return sum;
+}
+
+//闰年判断
+u8 leap_year_judge(u16 year)
+{
+	u16 leap = 0;
+
+	if(year % 400 == 0)
+	{
+		leap = 1;
+	}
+    else
+    {
+        if(year % 4 == 0 && year % 100 != 0)
+		{
+			leap = 1;
+		}
+        else
+		{
+			leap = 0;
+		}
+	}
+
+	return leap;
+}
+
+//闰年判断 返回当前年月日 在一年中的天数
+u32 get_days_form_calendar(u16 year,u8 month,u8 date)
+{
+	u16 i = 0;
+	u8 leap = 0;
+	u32 days = 0;
+	u8 x[13]={0,31,29,31,30,31,30,31,31,30,31,30,31};
+
+	for(i = 2000; i <= year; i ++)
+	{
+		leap = leap_year_judge(i);
+
+		if(leap == 1)
+		{
+			days += 366;
+		}
+		else if(leap == 0)
+		{
+			days += 365;
+		}
+	}
+
+	leap = leap_year_judge(year);
+
+	if(leap == 1)
+	{
+		x[2] = 29;
+	}
+	else if(leap == 0)
+	{
+		x[2] = 28;
+	}
+
+	for(i = 1; i < month; i ++)
+	{
+		days += x[i];			//整月的天数
+	}
+
+	days += (u16)date;			//日的天数
+
+	return days;
 }
 
 //产生一个系统1毫秒滴答时钟.
@@ -350,6 +465,23 @@ void SetSysTick1s(time_t sec)
 time_t GetSysTick1s(void)
 {
 	return SysTick1s;
+}
+
+//在FLASH中的指定位置读取一个字节
+u8 STMFLASH_ReadByte(u32 faddr)
+{
+	return *(vu8*)faddr;
+}
+
+//按字节读取FLASH指定地址
+void STMFLASH_ReadBytes(u32 ReadAddr,u8 *pBuffer,u16 NumToRead)
+{
+	u16 i = 0;
+	for(i=0;i<NumToRead;i++)
+	{
+		pBuffer[i]=STMFLASH_ReadByte(ReadAddr);
+		ReadAddr++;
+	}
 }
 
 //从EEPROM中读取数据(带CRC16校验码)len包括CRC16校验码
@@ -549,8 +681,12 @@ u8 ReadDeviceAreaID(void)
 		{
 			return 0;
 		}
-		
+
 		DeviceAreaID = HoldReg[AREA_ID_ADD];
+	}
+	else
+	{
+		DeviceAreaID = 0x01;
 	}
 
 	return ret;
@@ -569,8 +705,12 @@ u8 ReadDeviceBoxID(void)
 		{
 			return 0;
 		}
-		
+
 		DeviceBoxID = HoldReg[BOX_ID_ADD];
+	}
+	else
+	{
+		DeviceBoxID = 0x01;
 	}
 
 	return ret;
@@ -698,7 +838,7 @@ u8 ReadDeviceUUID(void)
 
 		memset(DeviceUUID,0,UU_ID_LEN);
 
-		sprintf((char *)DeviceUUID, "00000000000000000");
+		sprintf((char *)DeviceUUID, "00000000000000001");
 	}
 
 	return ret;
@@ -753,9 +893,9 @@ u8 ReadRS485BuadRate(void)
 
 	if(ret)
 	{
-		RS485BuadRate = (((u32)HoldReg[RS485_BUAD_RATE_ADD + 0]) << 24) + 
-						(((u32)HoldReg[RS485_BUAD_RATE_ADD + 1]) << 16) + 
-						(((u32)HoldReg[RS485_BUAD_RATE_ADD + 2]) << 8) + 
+		RS485BuadRate = (((u32)HoldReg[RS485_BUAD_RATE_ADD + 0]) << 24) +
+						(((u32)HoldReg[RS485_BUAD_RATE_ADD + 1]) << 16) +
+						(((u32)HoldReg[RS485_BUAD_RATE_ADD + 2]) << 8) +
 						(u32)HoldReg[RS485_BUAD_RATE_ADD +3];
 
 		if(RS485BuadRate > 115200 || RS485BuadRate < 1200)
@@ -813,77 +953,133 @@ u8 ReadAllRelayState(void)
 u8 WriteAllRelayState(void)
 {
 	u8 ret = 0;
-	
+
 	HoldReg[RELAY_STATE_ADD + 0] = (u8)(AllRelayState >> 8);
 	HoldReg[RELAY_STATE_ADD + 1] = (u8)(AllRelayState & 0x00FF);
-	
+
 	WriteDataFromHoldBufToEeprom(&HoldReg[RELAY_STATE_ADD],RELAY_STATE_ADD, RELAY_STATE_LEN - 2);
-	
+
 	return ret;
 }
 
-//设定OTA参数到EEPROM中
-void WriteOTAInfo(u8 *hold_reg,u8 reset)
-{
-	u16 crc_code = 0;
-	u16 i = 0;
-	
-	if(reset == 1)
-	{
-		HaveNewFirmWare   = 0;
-		NewFirmWareBagNum = 0;
-		NewFirmWareVer    = 101;
-		LastBagByteNum    = 0;
-	}
-	
-	if(NewFirmWareAdd != 0xAA && NewFirmWareAdd != 0x55)
-	{
-		NewFirmWareAdd = 0xAA;
-	}
-	
-	*(hold_reg + FIRM_WARE_FLAG_S_ADD) 			= HaveNewFirmWare;
-	*(hold_reg + FIRM_WARE_STORE_ADD_S_ADD) 	= NewFirmWareAdd;
-	*(hold_reg + FIRM_WARE_VER_S_ADD + 0) 		= (u8)((NewFirmWareVer >> 8) & 0x00FF);
-	*(hold_reg + FIRM_WARE_VER_S_ADD + 1) 		= (u8)(NewFirmWareVer & 0x00FF);
-	*(hold_reg + FIRM_WARE_BAG_NUM_S_ADD + 0) 	= (u8)((NewFirmWareBagNum >> 8) & 0x00FF);
-	*(hold_reg + FIRM_WARE_BAG_NUM_S_ADD + 1) 	= (u8)(NewFirmWareBagNum & 0x00FF);
-	*(hold_reg + LAST_BAG_BYTE_NUM_S_ADD) 		= LastBagByteNum;
-
-	crc_code = CRC16(hold_reg + OTA_INFO_ADD, OTA_INFO_LEN - 2);
-
-	*(hold_reg + OTA_INFO_ADD + OTA_INFO_LEN - 2) = (u8)(crc_code >> 8);
-	*(hold_reg + OTA_INFO_ADD + OTA_INFO_LEN - 1) = (u8)(crc_code & 0x00FF);
-
-	for(i = OTA_INFO_ADD; i < OTA_INFO_ADD + OTA_INFO_LEN; i ++)
-	{
-		AT24CXX_WriteOneByte(i,*(hold_reg + i));
-	}
-}
-
-//从EEPROM中读取OTA信息
-u8 ReadOTAInfo(u8 *hold_reg)
+//读取固件信息
+u8 ReadFrameWareInfo(void)
 {
 	u8 ret = 0;
-	
-	ret = ReadDataFromEepromToHoldBuf(hold_reg,OTA_INFO_ADD,OTA_INFO_LEN);
-	
-	if(ret == 1)
+
+	ret = ReadDataFromEepromToHoldBuf(HoldReg,SOFT_WARE_INFO_ADD, SOFT_WARE_INFO_LEN);
+
+	if(ret)
 	{
-		HaveNewFirmWare 	= *(hold_reg + FIRM_WARE_FLAG_S_ADD);
-		NewFirmWareAdd 		= *(hold_reg + FIRM_WARE_STORE_ADD_S_ADD);
-		NewFirmWareVer 		= (((u16)(*(hold_reg + FIRM_WARE_VER_S_ADD + 0))) << 8) + \
-								(u16)(*(hold_reg + FIRM_WARE_VER_S_ADD + 1));
-		NewFirmWareBagNum 	= (((u16)(*(hold_reg + FIRM_WARE_BAG_NUM_S_ADD + 0))) << 8) + \
-								(u16)(*(hold_reg + FIRM_WARE_BAG_NUM_S_ADD + 1));
-		LastBagByteNum 		= *(hold_reg + LAST_BAG_BYTE_NUM_S_ADD);
+		FrameWareInfo.version = (((u16)HoldReg[SOFT_WARE_INFO_ADD + 0]) << 8) + (u16)HoldReg[SOFT_WARE_INFO_ADD + 1];
+
+		FrameWareInfo.length = (((u32)HoldReg[SOFT_WARE_INFO_ADD + 2]) << 24) +
+							   (((u32)HoldReg[SOFT_WARE_INFO_ADD + 3]) << 16) +
+							   (((u32)HoldReg[SOFT_WARE_INFO_ADD + 4]) << 8) +
+							   (((u32)HoldReg[SOFT_WARE_INFO_ADD + 5]) << 0);
 	}
 	else
 	{
-		WriteOTAInfo(HoldReg,1);		//复位OTA信息
+		FrameWareInfo.version = 101;
+
+		FrameWareInfo.length = 0;
 	}
-	
+
 	return ret;
 }
+
+//将固件升级状态写入到EEPROM
+void WriteFrameWareStateToEeprom(void)
+{
+	HoldReg[UPDATE_STATE_ADD + 0]  = FrameWareState.state;
+	HoldReg[UPDATE_STATE_ADD + 1]  = (u8)(FrameWareState.total_bags >> 8);
+	HoldReg[UPDATE_STATE_ADD + 2]  = (u8)FrameWareState.total_bags;
+	HoldReg[UPDATE_STATE_ADD + 3]  = (u8)(FrameWareState.current_bag_cnt >> 8);
+	HoldReg[UPDATE_STATE_ADD + 4]  = (u8)FrameWareState.current_bag_cnt;
+	HoldReg[UPDATE_STATE_ADD + 5]  = (u8)(FrameWareState.bag_size >> 8);
+	HoldReg[UPDATE_STATE_ADD + 6]  = (u8)FrameWareState.bag_size;
+	HoldReg[UPDATE_STATE_ADD + 7]  = (u8)(FrameWareState.last_bag_size >> 8);
+	HoldReg[UPDATE_STATE_ADD + 8]  = (u8)FrameWareState.last_bag_size;
+	HoldReg[UPDATE_STATE_ADD + 9]  = (u8)(FrameWareState.total_size >> 24);
+	HoldReg[UPDATE_STATE_ADD + 10] = (u8)(FrameWareState.total_size >> 16);
+	HoldReg[UPDATE_STATE_ADD + 11] = (u8)(FrameWareState.total_size >> 8);
+	HoldReg[UPDATE_STATE_ADD + 12] = (u8)FrameWareState.total_size;
+
+	WriteDataFromHoldBufToEeprom(&HoldReg[UPDATE_STATE_ADD],UPDATE_STATE_ADD, UPDATE_STATE_LEN - 2);
+}
+
+//读取固件设计状态
+u8 ReadFrameWareState(void)
+{
+	u8 ret = 0;
+	u16 page_num = 0;
+	u16 i = 0;
+	u8 buf[UPDATE_STATE_LEN];
+
+	memset(buf,0,UPDATE_STATE_LEN);
+
+	ret = ReadDataFromEepromToHoldBuf(HoldReg,UPDATE_STATE_ADD,UPDATE_STATE_LEN);
+
+	if(ret == 1)
+	{
+		FrameWareState.state 			= HoldReg[UPDATE_STATE_ADD + 0];
+		FrameWareState.total_bags 		= ((((u16)HoldReg[UPDATE_STATE_ADD + 1]) << 8) & 0xFF00) +
+		                                  (((u16)HoldReg[UPDATE_STATE_ADD + 2]) & 0x00FF);
+		FrameWareState.current_bag_cnt 	= ((((u16)HoldReg[UPDATE_STATE_ADD + 3]) << 8) & 0xFF00) +
+		                                  (((u16)HoldReg[UPDATE_STATE_ADD + 4]) & 0x00FF);
+		FrameWareState.bag_size 		= ((((u16)HoldReg[UPDATE_STATE_ADD + 5]) << 8) & 0xFF00) +
+		                                  (((u16)HoldReg[UPDATE_STATE_ADD + 6]) & 0x00FF);
+		FrameWareState.last_bag_size 	= ((((u16)HoldReg[UPDATE_STATE_ADD + 7]) << 8) & 0xFF00) +
+		                                  (((u16)HoldReg[UPDATE_STATE_ADD + 8]) & 0x00FF);
+
+		FrameWareState.total_size 		= ((((u32)HoldReg[UPDATE_STATE_ADD + 9]) << 24) & 0xFF000000) +
+								          ((((u32)HoldReg[UPDATE_STATE_ADD + 10]) << 16) & 0x00FF0000) +
+								          ((((u32)HoldReg[UPDATE_STATE_ADD + 11]) << 8) & 0x0000FF00) +
+								          ((((u32)HoldReg[UPDATE_STATE_ADD + 12]) << 0) & 0x000000FF);
+
+		ret = 1;
+	}
+	else
+	{
+		RESET_STATE:
+		FrameWareState.state 			= FIRMWARE_FREE;
+		FrameWareState.total_bags 		= 0;
+		FrameWareState.current_bag_cnt 	= 0;
+		FrameWareState.bag_size 		= 0;
+		FrameWareState.last_bag_size 	= 0;
+
+		FrameWareState.total_size 		= 0;
+
+		WriteFrameWareStateToEeprom();			//将默认值写入EEPROM
+	}
+
+	if(FrameWareState.state == FIRMWARE_DOWNLOADING ||
+	   FrameWareState.state == FIRMWARE_DOWNLOAD_WAIT)
+	{
+		page_num = (FIRMWARE_MAX_FLASH_ADD - FIRMWARE_BUCKUP_FLASH_BASE_ADD) / 2048;	//得到备份区的扇区总数
+
+		FLASH_Unlock();						//解锁FLASH
+
+		for(i = 0; i < page_num; i ++)
+		{
+			FLASH_ErasePage(i * 2048 + FIRMWARE_BUCKUP_FLASH_BASE_ADD);	//擦除当前FLASH扇区
+		}
+
+		FLASH_Lock();						//上锁
+	}
+
+	if(FrameWareState.state == FIRMWARE_UPDATE_SUCCESS)
+	{
+//		UpdateSoftWareVer();
+//		UpdateSoftWareReleaseDate();
+
+		goto RESET_STATE;
+	}
+
+	return ret;
+}
+
+
 
 //读取时间策略数组
 u8 ReadRegularTimeGroups(void)
@@ -895,19 +1091,23 @@ u8 ReadRegularTimeGroups(void)
 	u16 cal_crc = 0;
 	u8 time_group[1024];
 	u8 read_success_buf_flag[MAX_GROUP_NUM];
-	
+
 	RegularTimeWeekDay = (pRegularTime)mymalloc(sizeof(RegularTime_S));
 	RegularTimeWeekEnd = (pRegularTime)mymalloc(sizeof(RegularTime_S));
 	RegularTimeHoliday = (pRegularTime)mymalloc(sizeof(RegularTime_S));
-	
+
 	RegularTimeWeekDay->number = 0xFF;
 	RegularTimeWeekEnd->number = 0xFF;
 	RegularTimeHoliday->number = 0xFF;
-	
+
+	RegularTimeWeekDay->type = 0xFF;
+	RegularTimeWeekEnd->type = 0xFF;
+	RegularTimeHoliday->type = 0xFF;
+
 	RegularTimeWeekDay->prev = NULL;
 	RegularTimeWeekEnd->prev = NULL;
 	RegularTimeHoliday->prev = NULL;
-	
+
 	RegularTimeWeekDay->next = NULL;
 	RegularTimeWeekEnd->next = NULL;
 	RegularTimeHoliday->next = NULL;
@@ -930,7 +1130,7 @@ u8 ReadRegularTimeGroups(void)
 			read_success_buf_flag[i] = 1;
 		}
 	}
-	
+
 	for(i = 0; i < MAX_GROUP_NUM; i ++)
 	{
 		if(read_success_buf_flag[i] == 1)
@@ -938,7 +1138,7 @@ u8 ReadRegularTimeGroups(void)
 			pRegularTime tmp_time = NULL;
 
 			tmp_time = (pRegularTime)mymalloc(sizeof(RegularTime_S));
-			
+
 			tmp_time->prev = NULL;
 			tmp_time->next = NULL;
 
@@ -990,29 +1190,22 @@ void ReadParametersFromEEPROM(void)
 	ReadRelayActionINCL();
 	ReadRS485BuadRate();
 	ReadAllRelayState();
+	ReadFrameWareInfo();
+	ReadFrameWareState();
 	ReadRegularTimeGroups();
 }
 
 //将继电器状态和时间打包
 u16 PackDataOfRelayInfo(u8 *outbuf)
 {
-	u8 i = 0;
 	u8 len = 0;
-//	u16 relays_stste = 0;
 	u16 relays_power_stste = 0;
-	
+
 #ifndef FORWARD
+	u8 i = 0;
+	
 	for(i = 0; i < CH_NUM; i ++)
 	{
-//		if(RelaysState & (1 << (CH_NUM - 1 - i)))
-//		{
-//			relays_stste |= (1 << i);
-//		}
-//		else
-//		{
-//			relays_stste &= ~(1 << i);
-//		}
-
 		if(AllRelayPowerState & (1 << (CH_NUM - 1 - i)))
 		{
 			relays_power_stste |= (1 << i);
@@ -1023,23 +1216,18 @@ u16 PackDataOfRelayInfo(u8 *outbuf)
 		}
 	}
 #endif
-	
-//	*(outbuf + 0) = (u8)(relays_stste >> 8);
-//	*(outbuf + 1) = (u8)(relays_stste & 0x00FF);
-//	*(outbuf + 2) = (u8)(relays_power_stste >> 8);
-//	*(outbuf + 3) = (u8)(relays_power_stste & 0x00FF);
 
 	*(outbuf + 0) = (u8)(RelaysState >> 8);
 	*(outbuf + 1) = (u8)(RelaysState & 0x00FF);
 	*(outbuf + 2) = (u8)(relays_power_stste >> 8);
 	*(outbuf + 3) = (u8)(relays_power_stste & 0x00FF);
-	
+
 	*(outbuf + 4) = calendar.hour;
 	*(outbuf + 5) = calendar.min;
 	*(outbuf + 6) = calendar.sec;
-	
+
 	len = 7;
-	
+
 	return len;
 }
 
@@ -1058,7 +1246,7 @@ u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf,u8 id_type)
 		*(outbuf + 7) = 0x68;
 		*(outbuf + 8) = DeviceAreaID;
 		*(outbuf + 9) = DeviceBoxID;
-		
+
 
 		if(DeviceUUID != NULL)
 		{
@@ -1076,10 +1264,10 @@ u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf,u8 id_type)
 				*(outbuf + 10 + i) = *(outbuf + 10 + i) - 0x30;
 			}
 		}
-		
+
 		*(outbuf + 27) = fun_code;
 		*(outbuf + 28) = inbuf_len;
-		
+
 		memcpy(outbuf + 29,inbuf,inbuf_len);	//具体数据内容
 
 		*(outbuf + 29 + inbuf_len + 0) = CalCheckSum(outbuf, 29 + inbuf_len);
@@ -1113,7 +1301,7 @@ u8 RegularTimeGroupAdd(u8 type,pRegularTime group_time)
 	{
 		xSemaphoreTake(xMutex_STRATEGY, portMAX_DELAY);
 	}
-	
+
 	switch(type)
 	{
 		case TYPE_WEEKDAY:
@@ -1126,7 +1314,7 @@ u8 RegularTimeGroupAdd(u8 type,pRegularTime group_time)
 
 		case TYPE_HOLIDAY_START:
 			main_time = RegularTimeHoliday;
-			
+
 			HolodayRange.year_s  = group_time->year;
 			HolodayRange.month_s = group_time->month;
 			HolodayRange.date_s  = group_time->date;
@@ -1137,7 +1325,7 @@ u8 RegularTimeGroupAdd(u8 type,pRegularTime group_time)
 
 		case TYPE_HOLIDAY_END:
 			main_time = RegularTimeHoliday;
-			
+
 			HolodayRange.year_e  = group_time->year;
 			HolodayRange.month_e = group_time->month;
 			HolodayRange.date_e  = group_time->date;
@@ -1147,7 +1335,7 @@ u8 RegularTimeGroupAdd(u8 type,pRegularTime group_time)
 
 		break;
 	}
-	
+
 	if(main_time != NULL)
 	{
 		for(tmp_time = main_time; tmp_time != NULL; tmp_time = tmp_time->next)
@@ -1160,34 +1348,53 @@ u8 RegularTimeGroupAdd(u8 type,pRegularTime group_time)
 					tmp_time->prev->next->next = tmp_time->next;
 					tmp_time->next->prev = group_time;
 					tmp_time->next->prev->prev = tmp_time->prev;
-					
+
 					myfree(tmp_time);
 				}
 				else
 				{
 					tmp_time->prev->next = group_time;
 					tmp_time->prev->next->prev = tmp_time->prev;
-					
+
 					myfree(tmp_time);
 				}
-				
+
 				break;
 			}
 			else if(tmp_time->next == NULL)
 			{
 				tmp_time->next = group_time;
 				tmp_time->next->prev = tmp_time;
-				
+
 				break;
 			}
 		}
+
+		if(group_time->type == TYPE_HOLIDAY_END)
+		{
+			GET_RANGE:
+			group_time->range.year_s  = HolodayRange.year_s;
+			group_time->range.month_s = HolodayRange.month_s;
+			group_time->range.date_s  = HolodayRange.date_s;
+
+			group_time->range.year_e  = HolodayRange.year_e;
+			group_time->range.month_e = HolodayRange.month_e;
+			group_time->range.date_e  = HolodayRange.date_e;
+
+			group_time = group_time->prev;
+
+			if(group_time->type == TYPE_HOLIDAY_START)
+			{
+				goto GET_RANGE;
+			}
+		}
 	}
-	
+
 	if(xSchedulerRunning == 1)
 	{
 		xSemaphoreGive(xMutex_STRATEGY);
 	}
-	
+
 	return ret;
 }
 
@@ -1200,7 +1407,7 @@ u8 RegularTimeGroupSub(u8 number)
 	{
 		xSemaphoreTake(xMutex_STRATEGY, portMAX_DELAY);
 	}
-	
+
 	if(RegularTimeWeekDay != NULL || RegularTimeWeekDay->next != NULL)
 	{
 		for(tmp_time = RegularTimeWeekDay->next; tmp_time != NULL; tmp_time = tmp_time->next)
@@ -1216,9 +1423,9 @@ u8 RegularTimeGroupSub(u8 number)
 				{
 					tmp_time->prev->next = NULL;
 				}
-				
+
 				myfree(tmp_time);
-				
+
 				ret = 1;
 			}
 		}
@@ -1239,9 +1446,9 @@ u8 RegularTimeGroupSub(u8 number)
 				{
 					tmp_time->prev->next = NULL;
 				}
-				
+
 				myfree(tmp_time);
-				
+
 				ret = 1;
 			}
 		}
@@ -1262,30 +1469,30 @@ u8 RegularTimeGroupSub(u8 number)
 				{
 					tmp_time->prev->next = NULL;
 				}
-				
+
 				myfree(tmp_time);
 
 				ret = 1;
 			}
 		}
 	}
-	
+
 	if(xSchedulerRunning == 1)
 	{
 		xSemaphoreGive(xMutex_STRATEGY);
 	}
-	
+
 	return ret;
 }
 
 void RemoveAllStrategy(void)
 {
 	u16 i = 0;
-	
+
 	for(i = 0; i < MAX_GROUP_NUM; i ++)
 	{
 		RegularTimeGroupSub(i);
-		
+
 		AT24CXX_WriteLenByte(TIME_RULE_ADD + TIME_RULE_LEN * i + 7,0x0000,2);
 	}
 }

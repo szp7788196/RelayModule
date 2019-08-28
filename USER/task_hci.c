@@ -56,6 +56,8 @@ void vTaskHCI(void *pvParameters)
 			}
 			
 			memset(Usart2RxBuf,0,Usart2FrameLen);
+			
+			Usart2FrameLen = 0;
 		}
 
 		if(send_len2 != 0)
