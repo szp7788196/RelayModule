@@ -21,6 +21,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x_rtc.h"
+#include "delay.h"
 
 /** @addtogroup STM32F10x_StdPeriph_Driver
   * @{
@@ -206,9 +207,22 @@ uint32_t RTC_GetDivider(void)
   */
 void RTC_WaitForLastTask(void)
 {
+	u8 temp = 0;
   /* Loop until RTOFF flag is set */
   while ((RTC->CRL & RTC_FLAG_RTOFF) == (uint16_t)RESET)
   {
+	temp ++;
+	delay_ms(10);
+	IWDG_Feed();
+	if(temp >= 250)
+	{
+		BKP_DeInit();
+		
+		__disable_fault_irq();
+		NVIC_SystemReset();
+		
+		break;
+	}
   }
 }
 

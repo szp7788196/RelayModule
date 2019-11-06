@@ -5,9 +5,65 @@
 _calendar_obj calendar;
 
 
+//u8 RTC_Init(void)
+//{
+//	u8 temp=0;
+
+//	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
+//	PWR_BackupAccessCmd(ENABLE);
+
+//	if(BKP_ReadBackupRegister(BKP_DR1) != 0x5050)
+//	{
+//		BKP_DeInit();
+//		RCC_LSEConfig(RCC_LSE_ON);
+
+//		while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET)
+//		{
+//			temp ++;
+//			delay_ms(10);
+//		}
+
+//		if(temp >= 250)
+//		{
+//			return 1;
+//		}
+
+//		RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
+//		RCC_RTCCLKCmd(ENABLE);
+//		RTC_WaitForLastTask();
+//		RTC_WaitForSynchro();
+//		RTC_ITConfig(RTC_IT_ALR, ENABLE);
+//		RTC_WaitForLastTask();
+//		RTC_WaitForSynchro();
+//		RTC_ITConfig(RTC_IT_SEC, ENABLE);
+//		RTC_WaitForLastTask();
+//		RTC_EnterConfigMode();
+//		RTC_SetPrescaler(32767);
+//		RTC_WaitForLastTask();
+//		RTC_Set(2000,1,1,0,1,1);
+//		RTC_ExitConfigMode();
+//		BKP_WriteBackupRegister(BKP_DR1, 0X5050);
+//	}
+//	else
+//	{
+//		RTC_WaitForSynchro();
+//		RTC_ITConfig(RTC_IT_SEC, ENABLE);
+//		RTC_WaitForLastTask();
+//		RTC_WaitForSynchro();
+//		RTC_ITConfig(RTC_IT_ALR, ENABLE);
+//		RTC_WaitForLastTask();
+//	}
+
+//	RTC_Get();
+
+//	return 0;
+//}
+
 u8 RTC_Init(void)
 {
 	u8 temp=0;
+	u32 RtcClkSource = 0;
+	u32 PrescalerValue = 0;
 
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
 	PWR_BackupAccessCmd(ENABLE);
@@ -16,29 +72,36 @@ u8 RTC_Init(void)
 	{
 		BKP_DeInit();
 		RCC_LSEConfig(RCC_LSE_ON);
-
 		while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET)
 		{
 			temp ++;
 			delay_ms(10);
+			IWDG_Feed();				//喂看门狗
+			if(temp >= 250)
+			{
+				RCC_LSICmd(ENABLE);
+				delay_ms(100);
+				break;
+			}
 		}
+
+		RtcClkSource = RCC_RTCCLKSource_LSE;
+		PrescalerValue = 32767;
 
 		if(temp >= 250)
 		{
-			return 1;
+			RtcClkSource = RCC_RTCCLKSource_LSI;
+			PrescalerValue = 39999;
 		}
 
-		RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
+		RCC_RTCCLKConfig(RtcClkSource);
 		RCC_RTCCLKCmd(ENABLE);
-		RTC_WaitForLastTask();
-		RTC_WaitForSynchro();
-		RTC_ITConfig(RTC_IT_ALR, ENABLE);
 		RTC_WaitForLastTask();
 		RTC_WaitForSynchro();
 		RTC_ITConfig(RTC_IT_SEC, ENABLE);
 		RTC_WaitForLastTask();
 		RTC_EnterConfigMode();
-		RTC_SetPrescaler(32767);
+		RTC_SetPrescaler(PrescalerValue);
 		RTC_WaitForLastTask();
 		RTC_Set(2000,1,1,0,1,1);
 		RTC_ExitConfigMode();
@@ -46,12 +109,40 @@ u8 RTC_Init(void)
 	}
 	else
 	{
+		RCC_LSEConfig(RCC_LSE_ON);
+		while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) == RESET)
+		{
+			temp ++;
+			delay_ms(10);
+			IWDG_Feed();				//喂看门狗
+			if(temp >= 250)
+			{
+				RCC_LSICmd(ENABLE);
+				delay_ms(100);
+				break;
+			}
+		}
+
+		RtcClkSource = RCC_RTCCLKSource_LSE;
+		PrescalerValue = 32767;
+
+		if(temp >= 250)
+		{
+			RtcClkSource = RCC_RTCCLKSource_LSI;
+			PrescalerValue = 39999;
+		}
+
+		RCC_RTCCLKConfig(RtcClkSource);
+		RCC_RTCCLKCmd(ENABLE);
+		RTC_WaitForLastTask();
 		RTC_WaitForSynchro();
 		RTC_ITConfig(RTC_IT_SEC, ENABLE);
 		RTC_WaitForLastTask();
-		RTC_WaitForSynchro();
-		RTC_ITConfig(RTC_IT_ALR, ENABLE);
+		RTC_EnterConfigMode();
+		RTC_SetPrescaler(PrescalerValue);
 		RTC_WaitForLastTask();
+//		RTC_Set(2000,1,1,0,1,1);
+		RTC_ExitConfigMode();
 	}
 
 	RTC_Get();

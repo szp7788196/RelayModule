@@ -17,6 +17,7 @@ void LED_Init(void)
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 	
 	GREEN_LED = 1;
+//	RED_LED = 1;
 }
 
 

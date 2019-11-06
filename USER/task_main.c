@@ -9,7 +9,8 @@
 
 TaskHandle_t xHandleTaskMAIN = NULL;
 
-u16 MirrorOutPutControlBitState = 0;
+u16 MirrorOutPutControlState = 0;
+u16 MirrorOutPutControlBit = 0;
 u16 MirrorAllRelayState = 0;
 
 
@@ -18,11 +19,38 @@ void vTaskMAIN(void *pvParameters)
 	BaseType_t xResult;
 	time_t times_sec = 0;
 	u8 key_state = 0;
+	u8 calendar_date = 0xFF;
+	Location_S location;
 
 	USART2_Init(RS485BuadRate);
 
+	GetTimeOK = GetSysTimeState();
+
+	location.longitude = 0.0f;
+	location.latitude = 0.0f;
+
 	while(1)
 	{
+		if(GetTimeOK != 0)
+		{
+			//根据当前日期和经纬度计算日出日落时间
+			if(calendar_date != calendar.w_date ||
+			   location.longitude != Location.longitude ||
+			   location.latitude != Location.latitude)
+			{
+				calendar_date = calendar.w_date;
+
+				location.longitude = Location.longitude;
+				location.latitude = Location.latitude;
+
+				SunRiseSetTime = GetSunTime(calendar.w_year,
+				                            calendar.w_month,
+				                            calendar.w_date,
+				                            Location.longitude,
+				                            Location.latitude);
+			}
+		}
+
 		if(GetSysTick1s() - times_sec >= 1)
 		{
 			times_sec = GetSysTick1s();
@@ -36,7 +64,7 @@ void vTaskMAIN(void *pvParameters)
 		xResult = xQueueReceive(xQueue_key,
 							(void *)&key_state,
 							(TickType_t)pdMS_TO_TICKS(1));
-		
+
 		if(xResult == pdPASS)
 		{
 			if(key_state == TRIPLE_CLICK)
@@ -47,12 +75,15 @@ void vTaskMAIN(void *pvParameters)
 			}
 		}
 
-		if(MirrorOutPutControlBitState != OutPutControlState || HaveNewActionCommand == 1)
+		if((MirrorOutPutControlState != OutPutControlState) ||
+			(MirrorOutPutControlBit != OutPutControlBit) ||
+			HaveNewActionCommand == 1)
 		{
-			MirrorOutPutControlBitState = OutPutControlState;
+			MirrorOutPutControlState = OutPutControlState;
+			MirrorOutPutControlBit = OutPutControlBit;
 			HaveNewActionCommand = 0;
 
-			ControlAllRelayDelay(MirrorOutPutControlBitState,&OutPutControlBit,RelayActionINCL);
+			ControlAllRelayDelay(OutPutControlState,&OutPutControlBit,RelayActionINCL);
 		}
 
 		if(MirrorAllRelayState != AllRelayState)
@@ -61,7 +92,7 @@ void vTaskMAIN(void *pvParameters)
 
 			WriteAllRelayState();						//将继电器状态存储到EEPROM中
 		}
-		
+
 		if(FrameWareState.state == FIRMWARE_DOWNLOADED)
 		{
 			delay_ms(2000);
@@ -95,10 +126,10 @@ void AutoLoopRegularTimeGroups(u16 *bit,u16 *state)
 	u32 gate_day_e = 0;
 	u32 gate_day_n = 0;
 
-	static u8 last_bit = 0;
-	static u8 current_bit = 0;
-	static u8 last_state = 0;
-	static u8 current_state = 0;
+	static u16 last_bit = 0;
+	static u16 current_bit = 0;
+	static u16 last_state = 0;
+	static u16 current_state = 0;
 
 	pRegularTime tmp_time = NULL;
 
@@ -252,13 +283,14 @@ void AutoLoopRegularTimeGroups(u16 *bit,u16 *state)
 
 	UPDATE_PERCENT:
 	if(last_bit != current_bit ||
-	   last_state != current_state)
+	   last_state != current_state ||
+	   RefreshStrategy == 1)
 	{
 		last_bit = current_bit;
 	    last_state = current_state;
 
-		*bit = tmp_time->control_bit;
-		*state = tmp_time->control_state;
+		*bit = current_bit;
+		*state = current_state;
 	}
 
 	xSemaphoreGive(xMutex_STRATEGY);

@@ -73,7 +73,7 @@ void AppTaskCreate(void)
 	
 	xTaskCreate(vTaskMAIN,
 				"vTaskMAIN",
-				128,
+				256,
 				NULL,
 				7,
 				&xHandleTaskMAIN);		//主任务

@@ -32,8 +32,9 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 	box_id = *(buf + 9);								//获取逻辑区码
 	uuid = buf + 10;									//获取UUID
 	cmd_code = *(buf + 27);								//获取功能码
-	data_len = *(buf + 28);								//获取数据长度
-	data = buf + 29;									//获取数据域
+	data_len = ((((u16)(*(buf + 28))) << 8) & 0xFF00) + 
+	           (((u16)(*(buf + 29))) & 0x00FF);			//获取数据长度
+	data = buf + 30;									//获取数据域
 
 	if(pos1 != 0xFFFF)
 	{
@@ -142,6 +143,10 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 						case 0xDC:									//设置逻辑区和物理区,下行
 							ret = WriteFrameWareBags(cmd_code,data,data_len,outbuf,response,uuid_type);
 						break;
+						
+						case 0xDD:									//设置位置信息
+							ret = SetPosition(cmd_code,data,data_len,outbuf,response,uuid_type);
+						break;
 
 						case 0x80:									//应答，下行,上行在别处处理
 							UnPackAckPacket(cmd_code,data,data_len);
@@ -168,7 +173,7 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 }
 
 //解析ACK包
-u8 UnPackAckPacket(u8 cmd_code,u8 *buf,u8 len)
+u8 UnPackAckPacket(u8 cmd_code,u8 *buf,u16 len)
 {
 	u8 ret = 0;
 
@@ -193,7 +198,7 @@ u16 PackAckPacket(u8 cmd_code,u8 *data,u8 *outbuf,u8 id_type)
 	return len;
 }
 
-u16 UpdateRelayModeInfo(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 UpdateRelayModeInfo(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 
@@ -212,7 +217,7 @@ u16 UpdateRelayModeInfo(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type
 }
 
 //控制继电器开闭
-u16 ControlRelayState(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 ControlRelayState(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 i = 0;
 	u8 out_len = 0;
@@ -268,7 +273,7 @@ u16 ControlRelayState(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 }
 
 //下发OTA命令
-u16 SetUpdateFirmWareInfo(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 SetUpdateFirmWareInfo(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u16 i = 0;
 	u8 out_len = 0;
@@ -343,7 +348,7 @@ u16 SetUpdateFirmWareInfo(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_ty
 }
 
 //下发更新固件命令
-u16 WriteFrameWareBags(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 WriteFrameWareBags(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 	u8 data_buf[5] = {0,0,0,0,0};
@@ -478,7 +483,7 @@ u16 WriteFrameWareBags(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 }
 
 //远程重启
-u16 ControlDeviceReset(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 ControlDeviceReset(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
@@ -502,7 +507,7 @@ u16 ControlDeviceReset(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 }
 
 //设置设备数据上传时间间隔
-u16 SetDeviceUpLoadINCL(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 SetDeviceUpLoadINCL(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
@@ -540,7 +545,7 @@ u16 SetDeviceUpLoadINCL(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type
 }
 
 //读取继电器信息
-u16 ReadDeviceInfo(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 ReadDeviceInfo(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 
@@ -561,7 +566,7 @@ u16 ReadDeviceInfo(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 }
 
 //从服务器获取时间戳
-u16 GetTimeDateFromServer(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 GetTimeDateFromServer(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
@@ -608,7 +613,7 @@ u16 GetTimeDateFromServer(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_ty
 }
 
 //设置策略时间
-u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 	u8 group_num = 0;
@@ -616,7 +621,7 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_typ
 	u16 j = 0;
 	u16 k = 0;
 	u8 data_buf[2] = {0,0};
-	u8 time_group[256];
+	u8 time_group[1280];
 	u16 crc16 = 0;
 
 	data_buf[0] = cmd_code;
@@ -637,8 +642,10 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_typ
 			AT24CXX_WriteOneByte(TIME_GROUP_NUM_ADD + 1,(u8)(crc16 >> 8));
 			AT24CXX_WriteOneByte(TIME_GROUP_NUM_ADD + 2,(u8)(crc16 & 0x00FF));
 
-			memset(time_group,0,256);
+			memset(time_group,0,1280);
 
+			k = 0;
+			
 			for(i = 0; i < group_num; i ++)
 			{
 				for(j = i * TIME_RULE_LEN; j < i * TIME_RULE_LEN + 10; j ++, k ++)
@@ -671,7 +678,6 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_typ
 				tmp_time->control_bit	= (((u16)time_group[i * TIME_RULE_LEN + 6]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 7];
 				tmp_time->control_state	= (((u16)time_group[i * TIME_RULE_LEN + 8]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 9];
 
-
 				switch(tmp_time->type)
 				{
 					case TYPE_WEEKDAY:
@@ -698,6 +704,8 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_typ
 				AT24CXX_WriteOneByte(TIME_RULE_ADD + i,time_group[i]);
 			}
 		}
+		
+		RefreshStrategy = 1;	//需要刷新策略状态
 	}
 	else
 	{
@@ -713,7 +721,7 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_typ
 }
 
 //控制设备的工作模式
-u16 SetDeviceWorkMode(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 SetDeviceWorkMode(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 	u8 mode = 0;
@@ -747,7 +755,7 @@ u16 SetDeviceWorkMode(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 }
 
 //设置设备的UUID
-u16 SetDeviceUUID(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 SetDeviceUUID(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
@@ -755,7 +763,7 @@ u16 SetDeviceUUID(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 
 	data_buf[0] = cmd_code;
 
-	if(len == UU_ID_LEN)												//数据长度必须是64
+	if(len == UU_ID_LEN - 2)												//数据长度必须是64
 	{
 		memset(uuid_buf,0,38);
 
@@ -779,7 +787,7 @@ u16 SetDeviceUUID(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 }
 
 //设置继电器动作间隔
-u16 SetRelayActionINCL(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 SetRelayActionINCL(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
@@ -817,7 +825,7 @@ u16 SetRelayActionINCL(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 }
 
 //设置继电器动作间隔
-u16 SetRS485BuarRate(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 SetRS485BuarRate(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
@@ -857,7 +865,7 @@ u16 SetRS485BuarRate(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 }
 
 //设置逻辑区和物理区
-u16 SetAreaID_BoxID(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
+u16 SetAreaID_BoxID(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
@@ -879,6 +887,51 @@ u16 SetAreaID_BoxID(u8 cmd_code,u8 *buf,u8 len,u8 *outbuf,u8 resp,u8 id_type)
 		{
 			data_buf[1] = 1;
 		}
+	}
+	else
+	{
+		data_buf[1] = 2;
+	}
+
+	if(resp == 1)
+	{
+		out_len = PackAckPacket(cmd_code,data_buf,outbuf,id_type);
+	}
+
+	return out_len;
+}
+
+//设置位置信息
+u16 SetPosition(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
+{
+	u8 out_len = 0;
+	u8 i = 0;
+	u8 data_buf[2] = {0,0};
+	u8 temp_buf[POSITION_LEN];
+
+	data_buf[0] = cmd_code;
+
+	if(len == POSITION_LEN - 2)
+	{
+		memset(temp_buf,0,POSITION_LEN);
+
+		memcpy(&HoldReg[POSITION_ADD],buf,POSITION_LEN - 2);
+
+		for(i = 0; i < 8; i ++)
+		{
+			temp_buf[i] = HoldReg[POSITION_ADD + 7 - i];
+		}
+		
+		memcpy(&Location.longitude,temp_buf,8);
+		
+		for(i = 0; i < 8; i ++)
+		{
+			temp_buf[i] = HoldReg[POSITION_ADD + 15 - i];
+		}
+		
+		memcpy(&Location.latitude,temp_buf,8);
+
+		WriteDataFromHoldBufToEeprom(&HoldReg[POSITION_ADD],POSITION_ADD, POSITION_LEN - 2);
 	}
 	else
 	{

@@ -34,7 +34,7 @@ void ControlAppointedRelay(u8 ch,u8 state)
 
 	TPIC6C595WriteOneByte(RelayControlBit);
 
-	delay_ms(10);
+	delay_ms(100);
 
 	TPIC6C595WriteOneByte(0);
 }
@@ -94,7 +94,7 @@ void ControlAllRelay(u16 out_put_control_bit,u16 *ch)
 
 	TPIC6C595WriteOneByte(RelayControlBit);
 
-	delay_ms(10);
+	delay_ms(100);
 
 	TPIC6C595WriteOneByte(0);
 }
@@ -162,9 +162,9 @@ void ControlAllRelayDelay(u16 out_put_control_bit,u16 *ch,u16 ms)
 				}
 			}
 
-			if(ms >= 10)
+			if(ms >= 100)
 			{
-				delay_ms(ms - 10);
+				delay_ms(ms - 100);
 			}
 		}
 	}
@@ -173,7 +173,7 @@ void ControlAllRelayDelay(u16 out_put_control_bit,u16 *ch,u16 ms)
 
 	TPIC6C595WriteOneByte(RelayControlBit);
 
-	delay_ms(10);
+	delay_ms(100);
 
 	TPIC6C595WriteOneByte(0);
 }

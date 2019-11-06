@@ -51,6 +51,8 @@ u16 RelayActionINCL = 100;			//数据上传时间间隔0~65535毫秒
 u32 RS485BuadRate = 9600;			//通讯波特率
 
 /***************************其他*****************************/
+u8 RefreshStrategy = 0;						//刷新策略列表
+
 u8 NeedToReset = 0;					//复位/重启标志
 u16 OutPutControlBit = 0;			//开出位标志
 u16 OutPutControlState = 0;			//开出位标志(具体哪几位)
@@ -62,6 +64,10 @@ u8 HaveNewActionCommand = 0;		//有新的动作指令
 /*************************固件升级相关***************************/
 FrameWareInfo_S FrameWareInfo;				//固件信息
 FrameWareState_S FrameWareState;			//固件升级状态
+
+/*************************天文时间相关***************************/
+Location_S Location;
+SunRiseSetTime_S SunRiseSetTime;
 
 //在str1中查找str2，失败返回0xFF,成功返回str2首个元素在str1中的位置
 u16 MyStrstr(u8 *str1, u8 *str2, u16 str1_len, u16 str2_len)
@@ -351,6 +357,19 @@ u8 CalCheckSum(u8 *buf, u16 len)
 	}
 
 	return sum;
+}
+
+//获取系统时间状态
+u8 GetSysTimeState(void)
+{
+	u8 ret = 0;
+
+	if(calendar.w_year >= 2019)
+	{
+		ret = 2;
+	}
+
+	return ret;
 }
 
 //闰年判断
@@ -711,6 +730,40 @@ u8 ReadDeviceBoxID(void)
 	else
 	{
 		DeviceBoxID = 0x01;
+	}
+
+	return ret;
+}
+
+//读取位置信息
+u8 ReadPosition(void)
+{
+	u8 ret = 0;
+	u8 i = 0;
+	u8 temp_buf[8];
+	
+	ret = ReadDataFromEepromToHoldBuf(HoldReg,POSITION_ADD, POSITION_LEN);
+
+	if(ret)
+	{
+		for(i = 0; i < 8; i ++)
+		{
+			temp_buf[i] = HoldReg[POSITION_ADD + 7 - i];
+		}
+		
+		memcpy(&Location.longitude,temp_buf,8);
+		
+		for(i = 0; i < 8; i ++)
+		{
+			temp_buf[i] = HoldReg[POSITION_ADD + 15 - i];
+		}
+		
+		memcpy(&Location.latitude,temp_buf,8);
+	}
+	else
+	{
+		Location.longitude = 116.397128f;
+		Location.latitude = 39.916527f;
 	}
 
 	return ret;
@@ -1089,7 +1142,7 @@ u8 ReadRegularTimeGroups(void)
 	u16 j = 0;
 	u16 read_crc = 0;
 	u16 cal_crc = 0;
-	u8 time_group[1024];
+	u8 time_group[1280];
 	u8 read_success_buf_flag[MAX_GROUP_NUM];
 
 	RegularTimeWeekDay = (pRegularTime)mymalloc(sizeof(RegularTime_S));
@@ -1112,7 +1165,7 @@ u8 ReadRegularTimeGroups(void)
 	RegularTimeWeekEnd->next = NULL;
 	RegularTimeHoliday->next = NULL;
 
-	memset(time_group,0,1024);
+	memset(time_group,0,1280);
 	memset(read_success_buf_flag,0,MAX_GROUP_NUM);
 
 	for(i = 0; i < MAX_GROUP_NUM; i ++)
@@ -1186,6 +1239,7 @@ void ReadParametersFromEEPROM(void)
 	ReadDeviceUUID();
 	ReadDeviceAreaID();
 	ReadDeviceBoxID();
+	ReadPosition();
 	ReadUpLoadINVL();
 	ReadRelayActionINCL();
 	ReadRS485BuadRate();
@@ -1254,7 +1308,7 @@ u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf,u8 id_type)
 		}
 		else
 		{
-			memcpy(outbuf + 10,"00000000000000000",UU_ID_LEN - 2);	//默认UUID
+			memcpy(outbuf + 10,"00000000000000001",UU_ID_LEN - 2);	//默认UUID
 		}
 
 		if(id_type == 0)
@@ -1266,22 +1320,23 @@ u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf,u8 id_type)
 		}
 
 		*(outbuf + 27) = fun_code;
-		*(outbuf + 28) = inbuf_len;
+		*(outbuf + 28) = (u8)((inbuf_len >> 8) & 0x00FF);
+		*(outbuf + 29) = (u8)(inbuf_len & 0x00FF);
 
-		memcpy(outbuf + 29,inbuf,inbuf_len);	//具体数据内容
+		memcpy(outbuf + 30,inbuf,inbuf_len);	//具体数据内容
 
-		*(outbuf + 29 + inbuf_len + 0) = CalCheckSum(outbuf, 29 + inbuf_len);
+		*(outbuf + 30 + inbuf_len + 0) = CalCheckSum(outbuf, 30 + inbuf_len);
 
-		*(outbuf + 29 + inbuf_len + 1) = 0x16;
+		*(outbuf + 30 + inbuf_len + 1) = 0x16;
 
-		*(outbuf + 29 + inbuf_len + 2) = 0xFE;
-		*(outbuf + 29 + inbuf_len + 3) = 0xFD;
-		*(outbuf + 29 + inbuf_len + 4) = 0xFC;
-		*(outbuf + 29 + inbuf_len + 5) = 0xFB;
-		*(outbuf + 29 + inbuf_len + 6) = 0xFA;
-		*(outbuf + 29 + inbuf_len + 7) = 0xF9;
+		*(outbuf + 30 + inbuf_len + 2) = 0xFE;
+		*(outbuf + 30 + inbuf_len + 3) = 0xFD;
+		*(outbuf + 30 + inbuf_len + 4) = 0xFC;
+		*(outbuf + 30 + inbuf_len + 5) = 0xFB;
+		*(outbuf + 30 + inbuf_len + 6) = 0xFA;
+		*(outbuf + 30 + inbuf_len + 7) = 0xF9;
 
-		len = 29 + inbuf_len + 7 + 1;
+		len = 30 + inbuf_len + 7 + 1;
 	}
 	else
 	{

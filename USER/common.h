@@ -23,6 +23,8 @@
 
 #include "rtc.h"
 
+#include "sun_rise_set.h"
+
 /*---------------------------------------------------------------------------*/
 /* Type Definition Macros                                                    */
 /*---------------------------------------------------------------------------*/
@@ -75,7 +77,7 @@
 #define MAX_FW_LAST_BAG_NUM			134
 
 
-#define MAX_GROUP_NUM				50		//(256 - 11 - 6 - 36) / 11
+#define MAX_GROUP_NUM				100		//(256 - 11 - 6 - 36) / 11
 #define HOLD_REG_LEN				512
 #define TIME_BUF_LEN				256
 
@@ -89,6 +91,13 @@
 
 #define MODE_AUTO					0
 #define MODE_MANUAL					1
+
+
+#define MAX_OPERATION_TIMES			30			//单个节能模式操作次数
+#define MAX_ENERGY_SAVING_MODE_NUM	10			//节能模式的最大个数
+#define MAX_APPOINTMENT_CONTROL_NUM 10			//预约控制的最大个数
+
+
 
 #define APP_SW_VER_ADD				4			//应用软件版本存储地址
 #define APP_SW_VER_LEN				4
@@ -111,6 +120,9 @@
 #define BOX_ID_ADD					124			//物理区码存储地址
 #define BOX_ID_LEN					3			//物理区长度
 
+#define POSITION_ADD				137			//位置信息存储地址
+#define POSITION_LEN				18			//位置信息长度
+
 #define UPLOAD_INVL_ADD				256			//数据上传周期存储地址
 #define UPLOAD_INVL_LEN				4
 
@@ -123,10 +135,10 @@
 #define OTA_INFO_ADD				301			//OTA信息存储地址
 #define OTA_INFO_LEN				9
 
-#define SOFT_WARE_INFO_ADD			301		//固件信息
+#define SOFT_WARE_INFO_ADD			301			//固件信息
 #define SOFT_WARE_INFO_LEN			8
 
-#define UPDATE_STATE_ADD			309		//升级状态
+#define UPDATE_STATE_ADD			309			//升级状态
 #define UPDATE_STATE_LEN			15
 
 #define TIME_GROUP_NUM_ADD			361			//策略组数存储地址
@@ -137,6 +149,21 @@
 
 #define TIME_RULE_ADD				512			//时间策略存储地址
 #define TIME_RULE_LEN				12
+
+#define NORMAL_STRATEGY_GROUP_ADD	512
+#define NORMAL_STRATEGY_GROUP_LEN	7
+
+#define STRATEGY_GROUP_LEN			396			//每个策略组的长度
+
+#define STRATEGY_GROUP_LABLE_ADD	519			//节能模式标签 共10组
+#define STRATEGY_GROUP_LABLE_LEN	4
+#define STRATEGY_CONTENT_ADD		523			//节能模式内容 每个节能模式组包含30组节能模式内容
+#define STRATEGY_CONTENT_LEN		12
+
+#define APPOIN_STRATEGY_GROUP_ADD	4159		//节日策略组存储地址
+#define APPOIN_STRATEGY_GROUP_LEN	19
+
+
 
 
 #define HolodayRange_S struct HolodayRange
@@ -190,6 +217,47 @@ typedef struct FrameWareState				//固件升级状态信息
 	u32 total_size;							//固件大小
 	
 }FrameWareState_S;
+
+typedef struct Location
+{
+	double longitude;
+	double latitude;
+}Location_S;
+
+typedef struct RunMode						//灯具运行模式(具体模式)
+{
+	u16 initial_ch;							//初始控制回路
+	u16 initial_state;						//初始回路状态
+	u8 energy_saving_mode_id;				//节能模式编号
+}RunMode_S;
+
+typedef struct ActualOperation				//实际操作内容
+{
+	u8 mode;								//操作方式
+	u8 rise_set;							//日出日落标识
+	s16 offset;								//偏移量(单位:1min)
+	u16 ch;									//控制回路
+	u16 state;								//回路状态
+	u8 absolute_time[5];					//绝对时间
+}ActualOperation_S;
+
+typedef struct EnergySavingMode							//节能模式
+{
+	u8 mode_id;											//模式编号
+	u8 control_times;									//控制次数
+	
+	ActualOperation_S operation[MAX_OPERATION_TIMES];	//具体操作
+}EnergySavingMode_S;
+
+typedef struct AppointmentControl			//单灯预约控制
+{
+	u8 appointment_id;						//预约编号
+	u8 enable;								//启用标志
+	u8 start_date[5];						//开始日期
+	u8 end_date[5];							//结束日期
+	
+	RunMode_S run_mode;						//控制模式
+}AppointmentControl_S;
 
 
 static const uint32_t crc32tab[] =
@@ -372,6 +440,7 @@ extern u16 RelayActionINCL;				//数据上传时间间隔0~65535毫秒
 extern u32 RS485BuadRate;				//通讯波特率
 
 extern u8 NeedToReset;					//复位/重启标志
+extern u8 RefreshStrategy;							//刷新策略列表
 
 /*|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------|*/
 /*|                                                        OutPutControlBit每个bit对应一个继电器的开闭状态                                                                |*/
@@ -392,6 +461,9 @@ extern u8 HaveNewActionCommand;			//有新的动作指令
 extern FrameWareInfo_S FrameWareInfo;				//固件信息
 extern FrameWareState_S FrameWareState;			//固件升级状态
 
+extern Location_S Location;
+extern SunRiseSetTime_S SunRiseSetTime;
+
 
 u16 MyStrstr(u8 *str1, u8 *str2, u16 str1_len, u16 str2_len);
 u8 GetDatBit(u32 dat);
@@ -408,6 +480,7 @@ u16 CRC16(u8 *puchMsgg,u8 usDataLen);
 u16 GetCRC16(u8 *data,u16 len);
 u8 CalCheckSum(u8 *buf, u16 len);
 
+u8 GetSysTimeState(void);
 u8 leap_year_judge(u16 year);
 u32 get_days_form_calendar(u16 year,u8 month,u8 date);
 
@@ -433,6 +506,7 @@ u8 GetDeviceID(void);
 u8 GetDeviceUUID(void);
 u8 ReadDeviceAreaID(void);
 u8 ReadDeviceBoxID(void);
+u8 ReadPosition(void);
 u8 ReadUpLoadINVL(void);
 u8 ReadRelayActionINCL(void);
 u8 ReadRS485BuadRate(void);

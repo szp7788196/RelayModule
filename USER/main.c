@@ -7,10 +7,12 @@
 #include "tpic6c595.h"
 #include "input.h"
 
+
 //u16 i = 0;
 //u8 eepbuf[256];
 //u16 cnt = 0;
 //u8 led_s = 0;
+//SunRiseSetTime_S Sun;
 RCC_ClocksTypeDef RCC_Clocks;
 int main(void)
 {

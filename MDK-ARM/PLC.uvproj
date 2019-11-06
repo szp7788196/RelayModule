@@ -437,6 +437,11 @@
               <FileType>1</FileType>
               <FilePath>..\USER\task_key.c</FilePath>
             </File>
+            <File>
+              <FileName>sun_rise_set.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\USER\sun_rise_set.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

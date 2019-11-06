@@ -6,8 +6,8 @@
 #define Usart1RxLen	256	
 #define Usart1TxLen	256
 
-#define Usart2RxLen	512	
-#define Usart2TxLen	512
+#define Usart2RxLen	1500	
+#define Usart2TxLen	1500
 
 #define Usart4RxLen	128	
 #define Usart4TxLen	128
