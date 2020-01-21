@@ -73,7 +73,7 @@ void ControlAllRelay(u16 out_put_control_bit,u16 *ch)
 	}
 #endif
 
-	for(i = 0; i < 12; i ++)
+	for(i = 0; i < CH_NUM; i ++)
 	{
 		if(relay_ch & (1 << i))
 		{
@@ -133,7 +133,7 @@ void ControlAllRelayDelay(u16 out_put_control_bit,u16 *ch,u16 ms)
 	}
 #endif
 
-	for(i = 0; i < 12; i ++)
+	for(i = 0; i < CH_NUM; i ++)
 	{
 		if(relay_ch & (1 << i))
 		{
@@ -171,11 +171,14 @@ void ControlAllRelayDelay(u16 out_put_control_bit,u16 *ch,u16 ms)
 
 	*ch = 0;
 
-	TPIC6C595WriteOneByte(RelayControlBit);
+	if(ms == 0)
+	{
+		TPIC6C595WriteOneByte(RelayControlBit);
 
-	delay_ms(100);
+		delay_ms(100);
 
-	TPIC6C595WriteOneByte(0);
+		TPIC6C595WriteOneByte(0);
+	}
 }
 
 

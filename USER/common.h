@@ -77,8 +77,8 @@
 #define MAX_FW_LAST_BAG_NUM			134
 
 
-#define MAX_GROUP_NUM				100		//(256 - 11 - 6 - 36) / 11
-#define HOLD_REG_LEN				512
+#define MAX_GROUP_NUM				50
+#define MAX_STRATEGY_NUM			100
 #define TIME_BUF_LEN				256
 
 #define MAX_UPLOAD_INVL				65500
@@ -141,64 +141,50 @@
 #define UPDATE_STATE_ADD			309			//升级状态
 #define UPDATE_STATE_LEN			15
 
-#define TIME_GROUP_NUM_ADD			361			//策略组数存储地址
-#define TIME_GROUP_NUM_LEN			3
+#define STRATEGY_GROUP_NUM_ADD		361			//策略组数存储地址
+#define STRATEGY_GROUP_NUM_LEN		3
 
 #define RELAY_STATE_ADD				364			//继电器状态存储地址
 #define RELAY_STATE_LEN				4
 
-#define TIME_RULE_ADD				512			//时间策略存储地址
-#define TIME_RULE_LEN				12
+#define APPOIN_GROUP_NUM_ADD		368			//节日策略组数
+#define APPOIN_GROUP_NUM_LEN		3
 
-#define NORMAL_STRATEGY_GROUP_ADD	512
-#define NORMAL_STRATEGY_GROUP_LEN	7
+#define CONTRAST_TABLE_ADD			371			//计量模块对照表
+#define CONTRAST_TABLE_LEN			26
 
-#define STRATEGY_GROUP_LEN			396			//每个策略组的长度
 
-#define STRATEGY_GROUP_LABLE_ADD	519			//节能模式标签 共10组
-#define STRATEGY_GROUP_LABLE_LEN	4
-#define STRATEGY_CONTENT_ADD		523			//节能模式内容 每个节能模式组包含30组节能模式内容
+#define NORMAL_STRATEGY_GROUP_ADD	512			
+#define NORMAL_STRATEGY_GROUP_LEN	8
+
+#define STRATEGY_CONTENT_ADD		531			//节能模式内容 每个节能模式组包含30组节能模式内容
 #define STRATEGY_CONTENT_LEN		12
 
-#define APPOIN_STRATEGY_GROUP_ADD	4159		//节日策略组存储地址
-#define APPOIN_STRATEGY_GROUP_LEN	19
+#define APPOIN_STRATEGY_GROUP_ADD	4201		//节日策略组存储地址
+#define APPOIN_STRATEGY_GROUP_LEN	18
 
 
 
 
-#define HolodayRange_S struct HolodayRange
-typedef struct HolodayRange *pHolodayRange;
-struct HolodayRange
+
+#define StrategyTime_S struct StrategyTime
+typedef struct StrategyTime *pStrategyTime;
+struct StrategyTime
 {
-	u8 year_s;
-	u8 month_s;
-	u8 date_s;
+	u16 number;				//策略号
+	u8 group;				//组号
+	u8 type;				//策略类别1:普通 2:日出时间 3:日落时间
+
+	u8 hour;				//时
+	u8 minute;				//分
 	
-	u8 year_e;
-	u8 month_e;
-	u8 date_e;
-};
+	s16 offset_min;			//偏移时间
 
-#define RegularTime_S struct RegularTime
-typedef struct RegularTime *pRegularTime;
-struct RegularTime
-{
-	u8 number;
-	u8 type;			//策略类别Bit0:1 工作日 Bit1:1 周末 Bit2:1节日
+	u16 control_bit;		//位指定字节
+	u16 control_state;		//状态指定字节
 
-	u8 year;
-	u8 month;
-	u8 date;
-	u8 hour;
-	u8 minute;
-	
-	HolodayRange_S range;
-
-	u16 control_bit;	//位指定字节
-	u16 control_state;	//状态指定字节
-
-	pRegularTime prev;
-	pRegularTime next;
+	pStrategyTime prev;
+	pStrategyTime next;
 };
 
 typedef struct FrameWareInfo				//FTP升级固件信息
@@ -224,40 +210,38 @@ typedef struct Location
 	double latitude;
 }Location_S;
 
-typedef struct RunMode						//灯具运行模式(具体模式)
+typedef struct NormalControl				//灯具运行模式(具体模式)
 {
-	u16 initial_ch;							//初始控制回路
-	u16 initial_state;						//初始回路状态
-	u8 energy_saving_mode_id;				//节能模式编号
-}RunMode_S;
+	u8 week_enable;							//星期循环使能
+	u16 cycle_min;							//周期循环时间
+	u8 strategy_group;						//节能模式编号
+}NormalControl_S;
 
-typedef struct ActualOperation				//实际操作内容
+#define AppointmentControl_S struct AppointmentControl
+typedef struct AppointmentControl *pAppointmentControl;
+struct AppointmentControl			//单灯预约控制
 {
-	u8 mode;								//操作方式
-	u8 rise_set;							//日出日落标识
-	s16 offset;								//偏移量(单位:1min)
-	u16 ch;									//控制回路
-	u16 state;								//回路状态
-	u8 absolute_time[5];					//绝对时间
-}ActualOperation_S;
-
-typedef struct EnergySavingMode							//节能模式
-{
-	u8 mode_id;											//模式编号
-	u8 control_times;									//控制次数
+	u8 number;								//节日号
 	
-	ActualOperation_S operation[MAX_OPERATION_TIMES];	//具体操作
-}EnergySavingMode_S;
-
-typedef struct AppointmentControl			//单灯预约控制
-{
-	u8 appointment_id;						//预约编号
-	u8 enable;								//启用标志
-	u8 start_date[5];						//开始日期
-	u8 end_date[5];							//结束日期
+	u8 s_year;								//起始年
+	u8 s_month;
+	u8 s_date;
+	u8 s_hour;
+	u8 s_minute;
 	
-	RunMode_S run_mode;						//控制模式
-}AppointmentControl_S;
+	u8 e_year;								//结束年
+	u8 e_month;
+	u8 e_date;
+	u8 e_hour;
+	u8 e_minute;
+	
+	u8 week_enable;							//星期循环使能
+	u16 cycle_min;							//周期循环时间
+	u8 strategy_group;						//节能模式编号
+	
+	pAppointmentControl prev;
+	pAppointmentControl next;
+};
 
 
 static const uint32_t crc32tab[] =
@@ -392,15 +376,17 @@ extern SemaphoreHandle_t  xMutex_IIC1;			//IIC1的互斥量
 extern SemaphoreHandle_t  xMutex_STRATEGY;		//AT指令的互斥量
 
 extern QueueHandle_t xQueue_key;				//用于按键时间的消息队列
+extern QueueHandle_t xQueue_RelayState;			//用于继电器状态变化的消息队列
 
 
-extern u8 HoldReg[HOLD_REG_LEN];
-extern u8 RegularTimeGroups[TIME_BUF_LEN];
-extern u8 TimeGroupNumber;
-extern pRegularTime RegularTimeWeekDay;			//工作日策略
-extern pRegularTime RegularTimeWeekEnd;			//周末策略
-extern pRegularTime RegularTimeHoliday;			//节假日策略
-extern HolodayRange_S HolodayRange;				//节假日起始日期
+extern u8 TimeStrategyNumber;
+extern u8 AppoinGroupNumber;							//节日策略组数
+extern pStrategyTime CurrentStrategy;					//被选中的策略组
+extern pStrategyTime StrategyGroup[MAX_GROUP_NUM];		//总策略列表
+extern NormalControl_S NormalControl;					//平日模式策略组
+extern pAppointmentControl AppointmentControl;			//节日策略组
+extern u8 ContrastTable[24];							//计量模块回路对照表
+
 
 /***************************固件升级相关*****************************/
 extern u8 NeedUpDateFirmWare;			//有新固件需要加载
@@ -496,14 +482,14 @@ u8 STMFLASH_ReadByte(u32 faddr);
 void STMFLASH_ReadBytes(u32 ReadAddr,u8 *pBuffer,u16 NumToRead);
 
 
-u8 ReadDataFromEepromToHoldBuf(u8 *inbuf,u16 s_add, u16 len);
-void WriteDataFromHoldBufToEeprom(u8 *inbuf,u16 s_add, u16 len);
-u8 GetMemoryForString(u8 **str, u8 type, u32 id, u16 add, u16 size, u8 *hold_reg);
+//u8 ReadDataFromEepromToHoldBuf(u8 *inbuf,u16 s_add, u16 len);
+//void WriteDataFromHoldBufToEeprom(u8 *inbuf,u16 s_add, u16 len);
+u8 ReadDataFromEepromToMemory(u8 *buf,u16 s_add, u16 len);
+void WriteDataFromMemoryToEeprom(u8 *inbuf,u16 s_add, u16 len);
+//u8 GetMemoryForString(u8 **str, u8 type, u32 id, u16 add, u16 size, u8 *hold_reg);
+u8 GetMemoryForSpecifyPointer(u8 **str,u16 size, u8 *memory);
 u8 CopyStrToPointer(u8 **pointer, u8 *str, u8 len);
 
-u8 GetDeviceName(void);
-u8 GetDeviceID(void);
-u8 GetDeviceUUID(void);
 u8 ReadDeviceAreaID(void);
 u8 ReadDeviceBoxID(void);
 u8 ReadPosition(void);
@@ -518,21 +504,32 @@ u8 ReadDeviceName(void);
 u8 ReadDeviceID(void);
 u8 ReadDeviceUUID(void);
 u8 ReadTimeGroupNumber(void);
+u8 ReadAppionGroupNumber(void);
 u8 ReadAllRelayState(void);
+u8 ReadContrastTable(void);
 u8 WriteAllRelayState(void);
 u8 ReadFrameWareInfo(void);
 void WriteFrameWareStateToEeprom(void);
 u8 ReadFrameWareState(void);
 
 u8 ReadRegularTimeGroups(void);
+u8 ReadNormalGroup(void);
+u8 ReadAppointmentGroups(void);
 void ReadParametersFromEEPROM(void);
 
 u16 PackDataOfRelayInfo(u8 *outbuf);
 u16 PackNetData(u8 fun_code,u8 *inbuf,u16 inbuf_len,u8 *outbuf,u8 id_type);
 
-u8 RegularTimeGroupAdd(u8 type,pRegularTime group_time);
-u8 RegularTimeGroupSub(u8 number);
+u8 RegularTimeGroupAdd(pStrategyTime group_time);
+u8 RegularTimeGroupSub(u16 number);
 void RemoveAllStrategy(void);
+
+u8 AppointmentGroupAdd(pAppointmentControl group_time);
+u8 AppointmentGroupSub(u16 number);
+void RemoveAllAppointmentStrategy(void);
+
+u8 GetCurrentStrategy(void);
+void RefreshStrategySunRiseSetTime(void);
 
 
 

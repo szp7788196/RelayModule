@@ -33,6 +33,13 @@ void AppObjCreate(void)
     {
         /* 没有创建成功，用户可以在这里加入创建失败的处理机制 */
     }
+	
+	//创建消息队列
+	xQueue_RelayState = xQueueCreate(20, sizeof(u32));
+    if( xQueue_RelayState == 0 )
+    {
+        /* 没有创建成功，用户可以在这里加入创建失败的处理机制 */
+    }
 }
 
 /*********************************************************************************************************
@@ -66,14 +73,14 @@ void AppTaskCreate(void)
 	
 	xTaskCreate(vTaskHCI,
 				"vTaskHCI",
-				512,
+				1024,
 				NULL,
 				6,
 				&xHandleTaskHCI);		//人机交互任务
 	
 	xTaskCreate(vTaskMAIN,
 				"vTaskMAIN",
-				256,
+				512,
 				NULL,
 				7,
 				&xHandleTaskMAIN);		//主任务

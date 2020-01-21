@@ -15,7 +15,7 @@
 /	
 /
 ******************************************************************************************/
-u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg);
+u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf);
 
 
 u8 UnPackAckPacket(u8 cmd_code,u8 *buf,u16 len);
@@ -29,12 +29,19 @@ u16 SetDeviceUpLoadINCL(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_typ
 u16 ReadDeviceInfo(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 GetTimeDateFromServer(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
+u16 SetNormalStrategyGroup(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
+u16 SetAppointmentGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 SetDeviceWorkMode(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 SetDeviceUUID(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 SetRelayActionINCL(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 SetRS485BuarRate(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 SetAreaID_BoxID(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
 u16 SetPosition(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
+u16 SetContrastTable(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
+u16 GetContrastTable(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
+u16 GetRegularTimeGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
+u16 GetNormalStrategyGroup(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
+u16 GetAppointmentGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type);
 
 
 

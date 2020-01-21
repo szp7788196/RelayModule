@@ -41,7 +41,7 @@ extern AT_Command_S AT_CommandBuf[AT_MAX_NUM];
 /
 ******************************************************************************************/
 void AT_CommandInit(void);
-u16 AT_CommandDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg);
+u16 AT_CommandDataAnalysis(u8 *buf,u16 len,u8 *outbuf);
 u8 PackAT_CommandRespone(u8 *inbuf,u8 err_code,u8 *respbuf,u8 *outbuf);
 
 

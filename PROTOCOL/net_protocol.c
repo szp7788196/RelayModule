@@ -6,7 +6,7 @@
 #include "relay.h"
 
 //网络数据帧协议解析
-u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
+u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf)
 {
 	u8 i = 0;
 	u16 ret = 0;
@@ -32,7 +32,7 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 	box_id = *(buf + 9);								//获取逻辑区码
 	uuid = buf + 10;									//获取UUID
 	cmd_code = *(buf + 27);								//获取功能码
-	data_len = ((((u16)(*(buf + 28))) << 8) & 0xFF00) + 
+	data_len = ((((u16)(*(buf + 28))) << 8) & 0xFF00) +
 	           (((u16)(*(buf + 29))) & 0x00FF);			//获取数据长度
 	data = buf + 30;									//获取数据域
 
@@ -92,7 +92,7 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 				{
 					switch(cmd_code)
 					{
-						case 0xD0:									//发送固定信息(心跳)，上行
+						case 0xD0:									//读取各个继电器状态
 							ret = UpdateRelayModeInfo(cmd_code,data,data_len,outbuf,response,uuid_type);
 						break;
 
@@ -108,7 +108,7 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 							ret = SetDeviceUpLoadINCL(cmd_code,data,data_len,outbuf,response,uuid_type);
 						break;
 
-						case 0xD4:									//读取/发送信息
+						case 0xD4:									//读取设备基本信息
 							ret = ReadDeviceInfo(cmd_code,data,data_len,outbuf,response,uuid_type);
 						break;
 
@@ -128,7 +128,7 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 							ret = SetRelayActionINCL(cmd_code,data,data_len,outbuf,response,uuid_type);
 						break;
 
-						case 0xD9:									//设置定时发送间隔,下行
+						case 0xD9:									//设置通讯波特率
 							ret = SetRS485BuarRate(cmd_code,data,data_len,outbuf,response,uuid_type);
 						break;
 
@@ -136,16 +136,44 @@ u16 NetDataAnalysis(u8 *buf,u16 len,u8 *outbuf,u8 *hold_reg)
 							ret = SetAreaID_BoxID(cmd_code,data,data_len,outbuf,response,uuid_type);
 						break;
 
-						case 0xDB:									//设置逻辑区和物理区,下行
+						case 0xDB:									//设置升级包信息
 							ret = SetUpdateFirmWareInfo(cmd_code,data,data_len,outbuf,response,uuid_type);
 						break;
 
-						case 0xDC:									//设置逻辑区和物理区,下行
+						case 0xDC:									//写升级包
 							ret = WriteFrameWareBags(cmd_code,data,data_len,outbuf,response,uuid_type);
 						break;
-						
+
 						case 0xDD:									//设置位置信息
 							ret = SetPosition(cmd_code,data,data_len,outbuf,response,uuid_type);
+						break;
+
+						case 0xDE:									//设置平日策略组
+							ret = SetNormalStrategyGroup(cmd_code,data,data_len,outbuf,response,uuid_type);
+						break;
+
+						case 0xDF:									//设置节日策略组
+							ret = SetAppointmentGroups(cmd_code,data,data_len,outbuf,response,uuid_type);
+						break;
+
+						case 0xF0:									//设置六路采集模块对照表
+							ret = SetContrastTable(cmd_code,data,data_len,outbuf,response,uuid_type);
+						break;
+
+						case 0xF1:									//读取六路采集模块对照表
+							ret = GetContrastTable(cmd_code,data,data_len,outbuf,response,uuid_type);
+						break;
+						
+						case 0xF2:									//读取继电器开闭策略
+							ret = GetRegularTimeGroups(cmd_code,data,data_len,outbuf,response,uuid_type);
+						break;
+						
+						case 0xF3:									//读取平日策略组配置
+							ret = GetNormalStrategyGroup(cmd_code,data,data_len,outbuf,response,uuid_type);
+						break;
+						
+						case 0xF4:									//读取节日策略组配置
+							ret = GetAppointmentGroups(cmd_code,data,data_len,outbuf,response,uuid_type);
 						break;
 
 						case 0x80:									//应答，下行,上行在别处处理
@@ -202,7 +230,7 @@ u16 UpdateRelayModeInfo(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_typ
 {
 	u8 out_len = 0;
 
-	u8 data_buf[8] = {0,0,0,0,0,0,0,0};
+	u8 data_buf[10] = {0};
 
 	if(len == 0)
 	{
@@ -225,6 +253,8 @@ u16 ControlRelayState(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 	u16 bit = 0;
 	u16 state = 0;
 
+	u32 relay_state = 0;
+
 	data_buf[0] = cmd_code;
 
 	if(len == 4)												//数据长度必须是64
@@ -234,14 +264,25 @@ u16 ControlRelayState(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 
 		if(bit <= 0x0FFF && state <= 0x0FFF)
 		{
-			OutPutControlBit = bit;
-			OutPutControlState = state;
+//			OutPutControlBit = bit;
+//			OutPutControlState = state;
+
+			relay_state = bit;
+			relay_state = relay_state << 16;
+			relay_state = relay_state + state;
+
+			if(xQueueSend(xQueue_RelayState,(void *)&relay_state,(TickType_t)10) != pdPASS)
+			{
+#ifdef DEBUG_LOG
+				printf("send p_tSensorMsg fail 2.\r\n");
+#endif
+			}
 
 			for(i = 0; i < CH_NUM; i ++)
 			{
-				if(OutPutControlBit & (1 << i))
+				if(bit & (1 << i))
 				{
-					if(OutPutControlState & (1 << i))
+					if(state & (1 << i))
 					{
 						RelaysState |= (1 << i);
 					}
@@ -290,11 +331,7 @@ u16 SetUpdateFirmWareInfo(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_t
 								   (((u32)(*(buf + 4))) << 8) +
 								   (((u32)(*(buf + 5))) << 0);
 
-			memcpy(&HoldReg[SOFT_WARE_INFO_ADD],buf,SOFT_WARE_INFO_LEN - 2);
-
-			WriteDataFromHoldBufToEeprom(&HoldReg[SOFT_WARE_INFO_ADD],
-										SOFT_WARE_INFO_ADD,
-										SOFT_WARE_INFO_LEN - 2);	//将数据写入EEPROM
+			WriteDataFromMemoryToEeprom(buf,SOFT_WARE_INFO_ADD,SOFT_WARE_INFO_LEN - 2);
 
 			if(FrameWareInfo.length > FIRMWARE_SIZE)
 			{
@@ -523,8 +560,7 @@ u16 SetDeviceUpLoadINCL(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_typ
 		{
 			UpLoadINCL = incl;
 
-			memcpy(&HoldReg[UPLOAD_INVL_ADD],buf,2);
-			WriteDataFromHoldBufToEeprom(&HoldReg[UPLOAD_INVL_ADD],UPLOAD_INVL_ADD, UPLOAD_INVL_LEN - 2);
+			WriteDataFromMemoryToEeprom(buf,UPLOAD_INVL_ADD,UPLOAD_INVL_LEN - 2);
 		}
 		else
 		{
@@ -548,8 +584,10 @@ u16 SetDeviceUpLoadINCL(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_typ
 u16 ReadDeviceInfo(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
+	u8 i = 0;
 
-	u8 data_buf[2] = {0,0};
+	u8 temp_buf[POSITION_LEN];
+	u8 data_buf[29] = {0};
 
 	if(len == 0)
 	{
@@ -558,7 +596,36 @@ u16 ReadDeviceInfo(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 			data_buf[0] = (u8)(((u16)SOFT_WARE_VRESION) >> 8);
 			data_buf[1] = (u8)SOFT_WARE_VRESION;
 
-			out_len = PackNetData(cmd_code,data_buf,2,outbuf,id_type);
+			data_buf[2] = DeviceWorkMode;
+
+			data_buf[3] = (u8)(RelayActionINCL >> 8);
+			data_buf[4] = (u8)RelayActionINCL;
+
+			data_buf[5] = DeviceAreaID;
+			data_buf[6] = DeviceBoxID;
+
+			memcpy(temp_buf,&Location.longitude,8);
+
+			for(i = 0; i < 8; i ++)
+			{
+				data_buf[7 + i] = temp_buf[7 - i];
+			}
+
+			memcpy(temp_buf,&Location.latitude,8);
+
+			for(i = 0; i < 8; i ++)
+			{
+				data_buf[15 + i] = temp_buf[7 - i];
+			}
+
+			data_buf[23] = ((((u8)(calendar.w_year - 2000)) / 10) << 4) | (((u8)(calendar.w_year - 2000)) % 10);
+			data_buf[24] = ((calendar.w_month / 10) << 4) | (calendar.w_month % 10);
+			data_buf[25] = ((calendar.w_date / 10) << 4) | (calendar.w_date % 10);
+			data_buf[26] = ((calendar.hour / 10) << 4) | (calendar.hour % 10);
+			data_buf[27] = ((calendar.min / 10) << 4) | (calendar.min % 10);
+			data_buf[28] = ((calendar.sec / 10) << 4) | (calendar.sec % 10);
+
+			out_len = PackNetData(cmd_code,data_buf,29,outbuf,id_type);
 		}
 	}
 
@@ -593,6 +660,8 @@ u16 GetTimeDateFromServer(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_t
 			RTC_Set(year + 2000,mon,day,hour,min,sec);
 
 			GetTimeOK = 1;
+
+			RefreshStrategy = 1;
 		}
 		else
 		{
@@ -621,39 +690,40 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_ty
 	u16 j = 0;
 	u16 k = 0;
 	u8 data_buf[2] = {0,0};
-	u8 time_group[1280];
+	u8 time_group[MAX_STRATEGY_NUM * STRATEGY_CONTENT_LEN];
 	u16 crc16 = 0;
+	s16 minutes = 0;
 
 	data_buf[0] = cmd_code;
 
-	if(len % 10 == 0)							//数据长度必须是10的倍数
+	if(len % (STRATEGY_CONTENT_LEN - 2) == 0)			//数据长度必须是10的倍数
 	{
-		group_num = len / 10;									//计算下发了几组数据
+		group_num = len / (STRATEGY_CONTENT_LEN - 2);	//计算下发了几组数据
 
-		if(group_num <= MAX_GROUP_NUM)	//组数必须是2的倍数，并且要小于MAX_GROUP_NUM
+		if(group_num <= MAX_STRATEGY_NUM)				//组数要小于MAX_STRATEGY_NUM
 		{
-			RemoveAllStrategy();				//删除所有本地存储策略
-
-			TimeGroupNumber = group_num;
+			TimeStrategyNumber = group_num;
 
 			crc16 = CRC16(&group_num,1);
 
-			AT24CXX_WriteOneByte(TIME_GROUP_NUM_ADD + 0,TimeGroupNumber);
-			AT24CXX_WriteOneByte(TIME_GROUP_NUM_ADD + 1,(u8)(crc16 >> 8));
-			AT24CXX_WriteOneByte(TIME_GROUP_NUM_ADD + 2,(u8)(crc16 & 0x00FF));
+			AT24CXX_WriteOneByte(STRATEGY_GROUP_NUM_ADD + 0,TimeStrategyNumber);
+			AT24CXX_WriteOneByte(STRATEGY_GROUP_NUM_ADD + 1,(u8)(crc16 >> 8));
+			AT24CXX_WriteOneByte(STRATEGY_GROUP_NUM_ADD + 2,(u8)(crc16 & 0x00FF));
 
-			memset(time_group,0,1280);
+			RemoveAllStrategy();						//删除所有本地存储策略
+
+			memset(time_group,0,MAX_STRATEGY_NUM * STRATEGY_CONTENT_LEN);
 
 			k = 0;
-			
+
 			for(i = 0; i < group_num; i ++)
 			{
-				for(j = i * TIME_RULE_LEN; j < i * TIME_RULE_LEN + 10; j ++, k ++)
+				for(j = i * STRATEGY_CONTENT_LEN; j < i * STRATEGY_CONTENT_LEN + (STRATEGY_CONTENT_LEN - 2); j ++, k ++)
 				{
 					time_group[j] = *(buf + k);
 				}
 
-				crc16 = CRC16(&time_group[j - 10],10);
+				crc16 = CRC16(&time_group[j - (STRATEGY_CONTENT_LEN - 2)],(STRATEGY_CONTENT_LEN - 2));
 
 				time_group[j + 0] = (u8)(crc16 >> 8);
 				time_group[j + 1] = (u8)(crc16 & 0x00FF);
@@ -661,50 +731,50 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_ty
 
 			for(i = 0; i < group_num; i ++)
 			{
-				pRegularTime tmp_time = NULL;
+				pStrategyTime tmp_time = NULL;
 
-				tmp_time = (pRegularTime)mymalloc(sizeof(RegularTime_S));
+				tmp_time = (pStrategyTime)mymalloc(sizeof(StrategyTime_S));
 
 				tmp_time->prev = NULL;
 				tmp_time->next = NULL;
 
 				tmp_time->number 		= i;
-				tmp_time->type 			= time_group[i * TIME_RULE_LEN + 0];
-				tmp_time->year 			= time_group[i * TIME_RULE_LEN + 1];
-				tmp_time->month 		= time_group[i * TIME_RULE_LEN + 2];
-				tmp_time->date 			= time_group[i * TIME_RULE_LEN + 3];
-				tmp_time->hour 			= time_group[i * TIME_RULE_LEN + 4];
-				tmp_time->minute 		= time_group[i * TIME_RULE_LEN + 5];
-				tmp_time->control_bit	= (((u16)time_group[i * TIME_RULE_LEN + 6]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 7];
-				tmp_time->control_state	= (((u16)time_group[i * TIME_RULE_LEN + 8]) << 8) + (u16)time_group[i * TIME_RULE_LEN + 9];
+				tmp_time->group 		= time_group[i * STRATEGY_CONTENT_LEN + 0];
+				tmp_time->type 			= time_group[i * STRATEGY_CONTENT_LEN + 1];
+				tmp_time->hour 			= time_group[i * STRATEGY_CONTENT_LEN + 2];
+				tmp_time->minute 		= time_group[i * STRATEGY_CONTENT_LEN + 3];
+				tmp_time->offset_min 	= (s16)((((u16)time_group[i * STRATEGY_CONTENT_LEN + 4]) << 8) + (u16)time_group[i * STRATEGY_CONTENT_LEN + 5]);
+				tmp_time->control_bit	= (((u16)time_group[i * STRATEGY_CONTENT_LEN + 6]) << 8) + (u16)time_group[i * STRATEGY_CONTENT_LEN + 7];
+				tmp_time->control_state	= (((u16)time_group[i * STRATEGY_CONTENT_LEN + 8]) << 8) + (u16)time_group[i * STRATEGY_CONTENT_LEN + 9];
 
-				switch(tmp_time->type)
+				if(tmp_time->type == 2 || tmp_time->type == 3)
 				{
-					case TYPE_WEEKDAY:
-						RegularTimeGroupAdd(TYPE_WEEKDAY,tmp_time);
-					break;
+					if(tmp_time->type == 2)
+					{
+						tmp_time->hour = SunRiseSetTime.rise_h;
+						tmp_time->minute = SunRiseSetTime.rise_m;
+					}
+					else if(tmp_time->type == 3)
+					{
+						tmp_time->hour = SunRiseSetTime.set_h;
+						tmp_time->minute = SunRiseSetTime.set_m;
+					}
 
-					case TYPE_HOLIDAY_START:
-						RegularTimeGroupAdd(TYPE_HOLIDAY_START,tmp_time);
-					break;
+					minutes = tmp_time->hour * 60 + tmp_time->minute + tmp_time->offset_min;
 
-					case TYPE_HOLIDAY_END:
-						RegularTimeGroupAdd(TYPE_HOLIDAY_END,tmp_time);
-					break;
-
-					default:
-
-					break;
+					tmp_time->hour = minutes / 60;
+					tmp_time->minute = minutes % 60;
 				}
 
+				RegularTimeGroupAdd(tmp_time);
 			}
 
-			for(i = 0; i < group_num * TIME_RULE_LEN + group_num; i ++)				//每组7个字节+2个字节(CRC16)
+			for(i = 0; i < group_num * STRATEGY_CONTENT_LEN + group_num; i ++)
 			{
-				AT24CXX_WriteOneByte(TIME_RULE_ADD + i,time_group[i]);
+				AT24CXX_WriteOneByte(STRATEGY_CONTENT_ADD + i,time_group[i]);
 			}
 		}
-		
+
 		RefreshStrategy = 1;	//需要刷新策略状态
 	}
 	else
@@ -719,6 +789,232 @@ u16 SetRegularTimeGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_ty
 
 	return out_len;
 }
+
+//读取策略
+u16 GetRegularTimeGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
+{
+	u16 out_len = 0;
+	u16 i = 0;
+	u16 j = 0;
+
+	u8 data_buf[MAX_STRATEGY_NUM * STRATEGY_CONTENT_LEN];
+
+	if(len == 0)
+	{
+		if(resp == 1)
+		{
+			for(i = 0; i < TimeStrategyNumber; i ++)
+			{
+				for(j = i * STRATEGY_CONTENT_LEN; j < i * STRATEGY_CONTENT_LEN + STRATEGY_CONTENT_LEN; j ++)
+				{
+					data_buf[j] = AT24CXX_ReadOneByte(STRATEGY_CONTENT_ADD + j);
+				}
+				
+				memcpy(&data_buf[i * (STRATEGY_CONTENT_LEN - 2)],
+				       &data_buf[i * STRATEGY_CONTENT_LEN],
+				       STRATEGY_CONTENT_LEN - 2);
+			}
+			
+			out_len = TimeStrategyNumber * (STRATEGY_CONTENT_LEN - 2);
+
+			out_len = PackNetData(cmd_code,data_buf,out_len,outbuf,id_type);
+		}
+	}
+
+	return out_len;
+}
+
+//设置平日策略组
+u16 SetNormalStrategyGroup(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
+{
+	u8 out_len = 0;
+	u8 data_buf[2] = {0,0};
+
+	data_buf[0] = cmd_code;
+
+	if(len == 6)									//数据长度必须是10的倍数
+	{
+		NormalControl.week_enable = *(buf + 0);
+		NormalControl.cycle_min = (((u16)(*(buf + 1))) << 8) + (u16)(*(buf + 2));
+		NormalControl.strategy_group = *(buf + 5);
+
+		WriteDataFromMemoryToEeprom(buf,NORMAL_STRATEGY_GROUP_ADD,NORMAL_STRATEGY_GROUP_LEN - 2);
+
+		RefreshStrategy = 1;	//需要刷新策略状态
+	}
+	else
+	{
+		data_buf[1] = 2;
+	}
+
+	if(resp == 1)
+	{
+		out_len = PackAckPacket(cmd_code,data_buf,outbuf,id_type);
+	}
+
+	return out_len;
+}
+
+//读取平日策略组配置
+u16 GetNormalStrategyGroup(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
+{
+	u16 out_len = 0;
+	u8 data_buf[6] = {0};
+
+	if(len == 0)
+	{
+		if(resp == 1)
+		{
+			data_buf[0] = NormalControl.week_enable;
+			
+			data_buf[1] = (u8)(NormalControl.cycle_min >> 8);
+			data_buf[2] = (u8)NormalControl.cycle_min;
+			
+			data_buf[3] = 0;
+			data_buf[4] = 0;
+			
+			data_buf[5] = NormalControl.strategy_group;
+
+			out_len = PackNetData(cmd_code,data_buf,6,outbuf,id_type);
+		}
+	}
+
+	return out_len;
+}
+
+//设置节日策略组
+u16 SetAppointmentGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
+{
+	u8 out_len = 0;
+	u8 group_num = 0;
+	u16 i = 0;
+	u16 j = 0;
+	u16 k = 0;
+	u8 data_buf[2] = {0,0};
+	u8 time_group[MAX_GROUP_NUM * APPOIN_STRATEGY_GROUP_LEN];
+	u16 crc16 = 0;
+
+	data_buf[0] = cmd_code;
+
+	if(len % (APPOIN_STRATEGY_GROUP_LEN - 2) == 0)				//数据长度必须是10的倍数
+	{
+		group_num = len / (APPOIN_STRATEGY_GROUP_LEN - 2);		//计算下发了几组数据
+
+		if(group_num <= MAX_GROUP_NUM)							//组数要小于MAX_GROUP_NUM
+		{
+			RemoveAllAppointmentStrategy();						//删除所有本地存储策略
+
+			AppoinGroupNumber = group_num;
+
+			crc16 = CRC16(&group_num,1);
+
+			AT24CXX_WriteOneByte(APPOIN_GROUP_NUM_ADD + 0,AppoinGroupNumber);
+			AT24CXX_WriteOneByte(APPOIN_GROUP_NUM_ADD + 1,(u8)(crc16 >> 8));
+			AT24CXX_WriteOneByte(APPOIN_GROUP_NUM_ADD + 2,(u8)(crc16 & 0x00FF));
+
+			memset(time_group,0,MAX_GROUP_NUM * APPOIN_STRATEGY_GROUP_LEN);
+
+			k = 0;
+
+			for(i = 0; i < group_num; i ++)
+			{
+				for(j = i * APPOIN_STRATEGY_GROUP_LEN; j < i * APPOIN_STRATEGY_GROUP_LEN + (APPOIN_STRATEGY_GROUP_LEN - 2); j ++, k ++)
+				{
+					time_group[j] = *(buf + k);
+				}
+
+				crc16 = CRC16(&time_group[j - (APPOIN_STRATEGY_GROUP_LEN - 2)],(APPOIN_STRATEGY_GROUP_LEN - 2));
+
+				time_group[j + 0] = (u8)(crc16 >> 8);
+				time_group[j + 1] = (u8)(crc16 & 0x00FF);
+			}
+
+			for(i = 0; i < group_num; i ++)
+			{
+				pAppointmentControl tmp_time = NULL;
+
+				tmp_time = (pAppointmentControl)mymalloc(sizeof(AppointmentControl_S));
+
+				tmp_time->prev = NULL;
+				tmp_time->next = NULL;
+
+				tmp_time->number 		 = i;
+				tmp_time->s_year 		 = time_group[i * APPOIN_STRATEGY_GROUP_LEN + 0];
+				tmp_time->s_month 		 = time_group[i * APPOIN_STRATEGY_GROUP_LEN + 1];
+				tmp_time->s_date 		 = time_group[i * APPOIN_STRATEGY_GROUP_LEN + 2];
+				tmp_time->s_hour 		 = time_group[i * APPOIN_STRATEGY_GROUP_LEN + 3];
+				tmp_time->s_minute 		 = time_group[i * APPOIN_STRATEGY_GROUP_LEN + 4];
+
+				tmp_time->e_year 		 = time_group[i * APPOIN_STRATEGY_GROUP_LEN + 5];
+				tmp_time->e_month 		 = time_group[i * APPOIN_STRATEGY_GROUP_LEN + 6];
+				tmp_time->e_date 		 = time_group[i * APPOIN_STRATEGY_GROUP_LEN + 7];
+				tmp_time->e_hour 		 = time_group[i * APPOIN_STRATEGY_GROUP_LEN + 8];
+				tmp_time->e_minute 		 = time_group[i * APPOIN_STRATEGY_GROUP_LEN + 9];
+
+				tmp_time->week_enable 	 = time_group[i * APPOIN_STRATEGY_GROUP_LEN + 10];
+
+				tmp_time->cycle_min 	 = (((u16)time_group[i * APPOIN_STRATEGY_GROUP_LEN + 11]) << 8) + (u16)time_group[i * APPOIN_STRATEGY_GROUP_LEN + 12];
+
+				tmp_time->strategy_group = time_group[i * APPOIN_STRATEGY_GROUP_LEN + 15];
+
+				AppointmentGroupAdd(tmp_time);
+			}
+
+			for(i = 0; i < group_num * APPOIN_STRATEGY_GROUP_LEN + group_num; i ++)				//每组7个字节+2个字节(CRC16)
+			{
+				AT24CXX_WriteOneByte(APPOIN_STRATEGY_GROUP_ADD + i,time_group[i]);
+			}
+		}
+
+		RefreshStrategy = 1;	//需要刷新策略状态
+	}
+	else
+	{
+		data_buf[1] = 2;
+	}
+
+	if(resp == 1)
+	{
+		out_len = PackAckPacket(cmd_code,data_buf,outbuf,id_type);
+	}
+
+	return out_len;
+}
+
+//读取节日策略配置
+u16 GetAppointmentGroups(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
+{
+	u16 out_len = 0;
+	u16 i = 0;
+	u16 j = 0;
+
+	u8 data_buf[MAX_GROUP_NUM * APPOIN_STRATEGY_GROUP_LEN];
+
+	if(len == 0)
+	{
+		if(resp == 1)
+		{
+			for(i = 0; i < AppoinGroupNumber; i ++)
+			{
+				for(j = i * APPOIN_STRATEGY_GROUP_LEN; j < i * APPOIN_STRATEGY_GROUP_LEN + APPOIN_STRATEGY_GROUP_LEN; j ++)
+				{
+					data_buf[j] = AT24CXX_ReadOneByte(APPOIN_STRATEGY_GROUP_ADD + j);
+				}
+				
+				memcpy(&data_buf[i * (APPOIN_STRATEGY_GROUP_LEN - 2)],
+				       &data_buf[i * APPOIN_STRATEGY_GROUP_LEN],
+				       APPOIN_STRATEGY_GROUP_LEN - 2);
+			}
+			
+			out_len = AppoinGroupNumber * (APPOIN_STRATEGY_GROUP_LEN - 2);
+
+			out_len = PackNetData(cmd_code,data_buf,out_len,outbuf,id_type);
+		}
+	}
+
+	return out_len;
+}
+
 
 //控制设备的工作模式
 u16 SetDeviceWorkMode(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
@@ -759,19 +1055,14 @@ u16 SetDeviceUUID(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
-	u8 uuid_buf[38];
 
 	data_buf[0] = cmd_code;
 
 	if(len == UU_ID_LEN - 2)												//数据长度必须是64
 	{
-		memset(uuid_buf,0,38);
+		GetMemoryForSpecifyPointer(&DeviceUUID,UU_ID_LEN - 2, buf);
 
-		memcpy(&HoldReg[UU_ID_ADD],buf,36);
-
-		GetDeviceUUID();
-
-		WriteDataFromHoldBufToEeprom(&HoldReg[UU_ID_ADD],UU_ID_ADD, UU_ID_LEN - 2);
+		WriteDataFromMemoryToEeprom(buf,UU_ID_ADD, UU_ID_LEN - 2);
 	}
 	else
 	{
@@ -803,8 +1094,7 @@ u16 SetRelayActionINCL(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type
 		{
 			RelayActionINCL = incl;
 
-			memcpy(&HoldReg[REALY_ACTION_INVL_ADD],buf,2);
-			WriteDataFromHoldBufToEeprom(&HoldReg[REALY_ACTION_INVL_ADD],REALY_ACTION_INVL_ADD, REALY_ACTION_INVL_LEN - 2);
+			WriteDataFromMemoryToEeprom(buf,REALY_ACTION_INVL_ADD, REALY_ACTION_INVL_LEN - 2);
 		}
 		else
 		{
@@ -841,8 +1131,7 @@ u16 SetRS485BuarRate(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 		{
 			RS485BuadRate = baud_rate;
 
-			memcpy(&HoldReg[RS485_BUAD_RATE_ADD],buf,4);
-			WriteDataFromHoldBufToEeprom(&HoldReg[RS485_BUAD_RATE_ADD],RS485_BUAD_RATE_ADD, RS485_BUAD_RATE_LEN - 2);
+			WriteDataFromMemoryToEeprom(buf,RS485_BUAD_RATE_ADD, RS485_BUAD_RATE_LEN - 2);
 
 			USART2_Init(RS485BuadRate);
 		}
@@ -869,6 +1158,7 @@ u16 SetAreaID_BoxID(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 {
 	u8 out_len = 0;
 	u8 data_buf[2] = {0,0};
+	u8 temp_buf[AREA_ID_LEN];
 	data_buf[0] = cmd_code;
 
 	if(len == 2)
@@ -876,12 +1166,12 @@ u16 SetAreaID_BoxID(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 		if(*(buf + 0) < 0xFE && *(buf + 1) < 0xFE)
 		{
 			DeviceAreaID = *(buf + 0);
-			memcpy(&HoldReg[AREA_ID_ADD],&DeviceAreaID,AREA_ID_LEN - 2);
-			WriteDataFromHoldBufToEeprom(&HoldReg[AREA_ID_ADD],AREA_ID_ADD, AREA_ID_LEN - 2);
+			temp_buf[0] = *(buf + 0);
+			WriteDataFromMemoryToEeprom(temp_buf,AREA_ID_ADD, AREA_ID_LEN - 2);
 
 			DeviceBoxID = *(buf + 1);
-			memcpy(&HoldReg[BOX_ID_ADD],&DeviceBoxID,BOX_ID_LEN - 2);
-			WriteDataFromHoldBufToEeprom(&HoldReg[BOX_ID_ADD],BOX_ID_ADD, BOX_ID_LEN - 2);
+			temp_buf[0] = *(buf + 1);
+			WriteDataFromMemoryToEeprom(temp_buf,BOX_ID_ADD, BOX_ID_LEN - 2);
 		}
 		else
 		{
@@ -915,23 +1205,21 @@ u16 SetPosition(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 	{
 		memset(temp_buf,0,POSITION_LEN);
 
-		memcpy(&HoldReg[POSITION_ADD],buf,POSITION_LEN - 2);
+		for(i = 0; i < 8; i ++)
+		{
+			temp_buf[i] = buf[7 - i];
+		}
+
+		memcpy(&Location.longitude,temp_buf,8);
 
 		for(i = 0; i < 8; i ++)
 		{
-			temp_buf[i] = HoldReg[POSITION_ADD + 7 - i];
+			temp_buf[i] = buf[15 - i];
 		}
-		
-		memcpy(&Location.longitude,temp_buf,8);
-		
-		for(i = 0; i < 8; i ++)
-		{
-			temp_buf[i] = HoldReg[POSITION_ADD + 15 - i];
-		}
-		
+
 		memcpy(&Location.latitude,temp_buf,8);
 
-		WriteDataFromHoldBufToEeprom(&HoldReg[POSITION_ADD],POSITION_ADD, POSITION_LEN - 2);
+		WriteDataFromMemoryToEeprom(buf,POSITION_ADD, POSITION_LEN - 2);
 	}
 	else
 	{
@@ -946,7 +1234,52 @@ u16 SetPosition(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
 	return out_len;
 }
 
+//设置计量模块回路对照表
+u16 SetContrastTable(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
+{
+	u8 out_len = 0;
+	u8 data_buf[2] = {0,0};
 
+	data_buf[0] = cmd_code;
+
+	if(len == CONTRAST_TABLE_LEN - 2)
+	{
+		memcpy(ContrastTable,buf,CONTRAST_TABLE_LEN - 2);
+
+		WriteDataFromMemoryToEeprom(buf,CONTRAST_TABLE_ADD, CONTRAST_TABLE_LEN - 2);
+	}
+	else
+	{
+		data_buf[1] = 2;
+	}
+
+	if(resp == 1)
+	{
+		out_len = PackAckPacket(cmd_code,data_buf,outbuf,id_type);
+	}
+
+	return out_len;
+}
+
+//读取计量模块回路对照表
+u16 GetContrastTable(u8 cmd_code,u8 *buf,u16 len,u8 *outbuf,u8 resp,u8 id_type)
+{
+	u8 out_len = 0;
+
+	u8 data_buf[CONTRAST_TABLE_LEN];
+
+	if(len == 0)
+	{
+		if(resp == 1)
+		{
+			memcpy(data_buf,ContrastTable,CONTRAST_TABLE_LEN - 2);
+
+			out_len = PackNetData(cmd_code,data_buf,CONTRAST_TABLE_LEN - 2,outbuf,id_type);
+		}
+	}
+
+	return out_len;
+}
 
 
 

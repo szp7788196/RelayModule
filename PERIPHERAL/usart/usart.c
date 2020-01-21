@@ -13,6 +13,7 @@ u8 Usart1Busy = 0;
 u16 Usart1SendLen = 0;
 u16 Usart1SendNum = 0;
 
+u8 Usart2Rxing = 0;
 u16 Usart2RxCnt = 0;
 u16 OldUsart2RxCnt = 0;
 u16 Usart2FrameLen = 0;
@@ -98,7 +99,7 @@ void USART2_Init(u32 bound)
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_3;										//PA3
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;							//浮空输入
 	GPIO_Init(GPIOA, &GPIO_InitStructure);  										//初始化PA10
-	
+
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -138,15 +139,10 @@ void USART1_IRQHandler(void)
   	{
 		rxdata =USART_ReceiveData(USART1);
 
-		if(Usart1RxCnt<Usart1RxLen && Usart1Busy == 0)
+		if(Usart1RxCnt<Usart1RxLen)
 		{
 			Usart1RxBuf[Usart1RxCnt]=rxdata;
 			Usart1RxCnt++;
-
-//			if(Usart1RxCnt == 8)
-//			{
-//				Usart1RxCnt = Usart1RxCnt;
-//			}
 		}
   	}
 
@@ -184,15 +180,12 @@ void USART2_IRQHandler(void)
   	{
 		rxdata =USART_ReceiveData(USART2);
 
-		if(Usart2RxCnt<Usart2RxLen && Usart2Busy == 0)
+		if(Usart2RxCnt<Usart2RxLen)
 		{
 			Usart2RxBuf[Usart2RxCnt]=rxdata;
 			Usart2RxCnt++;
 
-			if(Usart2RxCnt == 8)
-			{
-				Usart2RxCnt = Usart2RxCnt;
-			}
+			Usart2Rxing = 1;
 		}
   	}
 
@@ -242,14 +235,16 @@ void Usart1ReciveFrameEnd(void)
 
 void Usart2ReciveFrameEnd(void)
 {
-	if(Usart2RxCnt)
+	if(Usart2Rxing)
 	{
 		if(OldUsart2RxCnt == Usart2RxCnt)
 		{
 			Usart2FrameLen = Usart2RxCnt;
-			OldUsart2RxCnt = 0;
-			Usart2RxCnt = 0;
+//			OldUsart2RxCnt = 0;
+//			Usart2RxCnt = 0;
 			Usart2RecvEnd = 0xAA;
+
+			Usart2Rxing = 0;
 		}
 		else
 		{

@@ -82,7 +82,7 @@ void AT_CommandInit(void)
 
 
 //AT指令帧协议解析,由串口1控制单灯控制器
-u16 AT_CommandDataAnalysis(u8 *inbuf,u16 inbuf_len,u8 *outbuf,u8 *hold_reg)
+u16 AT_CommandDataAnalysis(u8 *inbuf,u16 inbuf_len,u8 *outbuf)
 {
 	u8 i = 0;
 	u16 ret = 0;
@@ -274,9 +274,7 @@ u8 AT_CommandDEVNAME(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 			{
 				CopyStrToPointer(&DeviceName, &content[1],content[0]);
 
-				memcpy(&HoldReg[DEVICE_NAME_ADD],content,DEVICE_NAME_LEN - 2);
-
-				WriteDataFromHoldBufToEeprom(&HoldReg[DEVICE_NAME_ADD],DEVICE_NAME_ADD, DEVICE_NAME_LEN - 2);
+				WriteDataFromMemoryToEeprom(content,DEVICE_NAME_ADD, DEVICE_NAME_LEN - 2);
 
 				ret = 0;
 			}
@@ -327,9 +325,7 @@ u8 AT_CommandDEVID(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 			{
 				CopyStrToPointer(&DeviceID, content_hex,content_str_len / 2);
 
-				memcpy(&HoldReg[DEVICE_ID_ADD],content_hex,DEVICE_ID_LEN - 2);
-
-				WriteDataFromHoldBufToEeprom(&HoldReg[DEVICE_ID_ADD],DEVICE_ID_ADD, DEVICE_ID_LEN - 2);
+				WriteDataFromMemoryToEeprom(content_hex,DEVICE_ID_ADD, DEVICE_ID_LEN - 2);
 
 				ret = 0;
 			}
@@ -370,9 +366,7 @@ u8 AT_CommandUUID(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 			{
 				CopyStrToPointer(&DeviceUUID, content,content_len);
 
-				memcpy(&HoldReg[UU_ID_ADD],content,UU_ID_LEN - 2);
-
-				WriteDataFromHoldBufToEeprom(&HoldReg[UU_ID_ADD],UU_ID_ADD, UU_ID_LEN - 2);
+				WriteDataFromMemoryToEeprom(content,UU_ID_ADD, UU_ID_LEN - 2);
 
 				ret = 0;
 			}
@@ -470,9 +464,7 @@ u8 AT_CommandDeviceAreaID(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 		{
 			DeviceAreaID = content;
 
-			memcpy(&HoldReg[AREA_ID_ADD],&DeviceAreaID,AREA_ID_LEN - 2);
-
-			WriteDataFromHoldBufToEeprom(&HoldReg[AREA_ID_ADD],AREA_ID_ADD, AREA_ID_LEN - 2);
+			WriteDataFromMemoryToEeprom(&DeviceAreaID,AREA_ID_ADD, AREA_ID_LEN - 2);
 
 			ret = 0;
 		}
@@ -516,9 +508,7 @@ u8 AT_CommandDeviceBoxID(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 		{
 			DeviceBoxID = content;
 
-			memcpy(&HoldReg[BOX_ID_ADD],&DeviceBoxID,BOX_ID_LEN - 2);
-
-			WriteDataFromHoldBufToEeprom(&HoldReg[BOX_ID_ADD],BOX_ID_ADD, BOX_ID_LEN - 2);
+			WriteDataFromMemoryToEeprom(&DeviceBoxID,BOX_ID_ADD, BOX_ID_LEN - 2);
 
 			ret = 0;
 		}
@@ -562,9 +552,7 @@ u8 AT_CommandActionINCL(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 					content_str[0] = (u8)(RelayActionINCL >> 8);
 					content_str[1] = (u8)(RelayActionINCL & 0x00FF);
 
-					memcpy(&HoldReg[REALY_ACTION_INVL_ADD],content_str,REALY_ACTION_INVL_LEN - 2);
-
-					WriteDataFromHoldBufToEeprom(&HoldReg[REALY_ACTION_INVL_ADD],REALY_ACTION_INVL_ADD, REALY_ACTION_INVL_LEN - 2);
+					WriteDataFromMemoryToEeprom(content_str,REALY_ACTION_INVL_ADD, REALY_ACTION_INVL_LEN - 2);
 
 					ret = 0;
 				}
@@ -612,9 +600,7 @@ u8 AT_CommandRS485BuarRate(u8 cmd_id,u8 *inbuf,u16 inbuf_len,u8 *respbuf)
 					content_str[2] = (u8)(RS485BuadRate >> 8);
 					content_str[3] = (u8)(RS485BuadRate);
 
-					memcpy(&HoldReg[RS485_BUAD_RATE_ADD],content_str,RS485_BUAD_RATE_LEN - 2);
-
-					WriteDataFromHoldBufToEeprom(&HoldReg[RS485_BUAD_RATE_ADD],RS485_BUAD_RATE_ADD, RS485_BUAD_RATE_LEN - 2);
+					WriteDataFromMemoryToEeprom(content_str,RS485_BUAD_RATE_ADD, RS485_BUAD_RATE_LEN - 2);
 
 					USART2_Init(RS485BuadRate);
 					
